@@ -116,10 +116,21 @@ def screen_pairs(
     halflife_min: int = 5,
     halflife_max: int = 60,
     instability_threshold: float = 0.30,
+    train_frac: float | None = 0.60,
 ) -> pd.DataFrame:
+    """Screen sector pairs for cointegration.
+
+    Pairs are selected using only the first ``train_frac`` of the sample, so the
+    remaining out-of-sample period never influences which pairs are traded.
+    Pass ``train_frac=None`` to screen on the whole sample (selection bias).
+    """
     all_tickers = [t for tickers in SECTOR_TICKERS.values() for t in tickers]
     print("Downloading price data...")
     prices = download_prices(all_tickers, start, end)
+    if prices is None or prices.empty:
+        raise RuntimeError("Price download returned no data; refusing to write an empty pair list.")
+    if train_frac is not None:
+        prices = prices.iloc[: int(len(prices) * train_frac)]
     available = set(prices.columns)
 
     records = []
@@ -164,7 +175,11 @@ def screen_pairs(
                 }
             )
 
-    df = pd.DataFrame(records).sort_values("eg_pval")
+    df = pd.DataFrame(
+        records,
+        columns=["sector", "ticker1", "ticker2", "eg_stat", "eg_pval", "johansen_pass",
+                 "ols_beta", "half_life", "instability_rate", "stable"],
+    ).sort_values("eg_pval")
     out_path = DATA_DIR / "cointegrated_pairs.csv"
     df.to_csv(out_path, index=False)
     print(f"\nFound {len(df)} cointegrated pairs → {out_path}")

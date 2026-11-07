@@ -32,6 +32,11 @@ stat-arb-pairs/
 
 ---
 
+## Corrections
+
+- **Selection bias removed.** Cointegrated pairs were screened on the full sample, including the period later reported as out-of-sample. Pairs are now selected on the first 60% of dates only, the same split `run_pipeline.py` uses, so out-of-sample Sharpe ratios are genuinely out of sample. `data/cointegrated_pairs.csv` and `outputs/` predate this change; delete the CSV and rerun `python run_pipeline.py` to refresh them.
+- An empty price download now raises instead of silently writing an empty pair list.
+
 ## Methodology
 
 ### 1. Universe Construction
