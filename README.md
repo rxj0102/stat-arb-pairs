@@ -1,4 +1,6 @@
 # Cointegration-Based Statistical Arbitrage Engine
+
+[![CI](https://github.com/rxj0102/stat-arb-pairs/actions/workflows/ci.yml/badge.svg)](https://github.com/rxj0102/stat-arb-pairs/actions/workflows/ci.yml)
 ### Kalman Filter Hedge Ratio · OU Process · Regime Detection
 
 A production-grade pairs trading system that screens the S&P 500 universe for cointegrated pairs, fits Ornstein-Uhlenbeck dynamics, and generates mean-reversion signals using a dynamic Kalman-filter hedge ratio — with full out-of-sample backtesting and regime-aware risk management.
