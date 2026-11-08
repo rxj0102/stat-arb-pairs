@@ -3,7 +3,7 @@
 [![CI](https://github.com/rxj0102/stat-arb-pairs/actions/workflows/ci.yml/badge.svg)](https://github.com/rxj0102/stat-arb-pairs/actions/workflows/ci.yml)
 ### Kalman Filter Hedge Ratio · OU Process · Regime Detection
 
-A production-grade pairs trading system that screens the S&P 500 universe for cointegrated pairs, fits Ornstein-Uhlenbeck dynamics, and generates mean-reversion signals using a dynamic Kalman-filter hedge ratio — with full out-of-sample backtesting and regime-aware risk management.
+A pairs trading research system that screens the S&P 500 universe for cointegrated pairs, fits Ornstein-Uhlenbeck dynamics, and generates mean-reversion signals using a dynamic Kalman-filter hedge ratio - with full out-of-sample backtesting and regime-aware risk management.
 
 ---
 
@@ -100,7 +100,7 @@ Stop-loss: |z| > 3.0  →  immediate exit
 
 ---
 
-## Results — Top 5 Pairs (Out-of-Sample, 2019–2024)
+## Results - Top 5 Pairs (Out-of-Sample, 2019–2024)
 
 *60% in-sample fit / 40% OOS trading. 5bps one-way transaction costs per leg.*
 
@@ -114,7 +114,7 @@ Stop-loss: |z| > 3.0  →  immediate exit
 
 *Warning: this table predates the selection fix and is optimistic twice over: pairs were screened on the full sample, and these are the five pairs with the highest OOS Sharpe, i.e. ranked on the test result. Treat it as a pipeline illustration, not evidence of an edge; a fair summary is the average OOS Sharpe across all selected pairs from a fresh run.*
 
-*Note: Negative IS Sharpe is expected — the strategy trains only on cointegration structure, not signal profitability. The OOS forward-test is the true performance measure.*
+*Note: Negative IS Sharpe is expected - the strategy trains only on cointegration structure, not signal profitability. The OOS forward-test is the true performance measure.*
 
 ---
 
@@ -132,14 +132,14 @@ jupyter notebook notebooks/stat_arb_walkthrough.ipynb
 ```
 
 Outputs generated:
-- `data/cointegrated_pairs.csv` — screened pairs with test stats & half-life
-- `outputs/pair_performance_summary.csv` — full performance table
-- `outputs/top5_pairs_equity_curves.png` — OOS equity curves
-- `outputs/kalman_vs_ols_beta.png` — Kalman vs rolling OLS comparison
+- `data/cointegrated_pairs.csv` - screened pairs with test stats & half-life
+- `outputs/pair_performance_summary.csv` - full performance table
+- `outputs/top5_pairs_equity_curves.png` - OOS equity curves
+- `outputs/kalman_vs_ols_beta.png` - Kalman vs rolling OLS comparison
 
 ---
 
-## Resume Bullets
+## What this project implements
 
 - **Built end-to-end statistical arbitrage engine** in Python screening within-sector S&P 500 pairs using Engle-Granger and Johansen cointegration tests with rolling stability validation
 - **Implemented closed-form OU MLE** to estimate mean-reversion speed κ, long-run mean θ, and volatility σ; filtered pairs to half-lives of 5–60 days for tradeable mean-reversion dynamics
