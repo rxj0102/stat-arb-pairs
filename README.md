@@ -32,6 +32,11 @@ stat-arb-pairs/
 
 ---
 
+## Corrections
+
+- **Selection bias removed.** Cointegrated pairs were screened on the full sample, including the period later reported as out-of-sample. Pairs are now selected on the first 60% of dates only, the same split `run_pipeline.py` uses, so out-of-sample Sharpe ratios are genuinely out of sample. `data/cointegrated_pairs.csv` and `outputs/` predate this change; delete the CSV and rerun `python run_pipeline.py` to refresh them.
+- An empty price download now raises instead of silently writing an empty pair list.
+
 ## Methodology
 
 ### 1. Universe Construction
@@ -107,6 +112,8 @@ Stop-loss: |z| > 3.0  →  immediate exit
 | MSFT/AMD | Info Technology | 28d | -0.53 | **0.86** | -40.3% | 27% |
 | JNJ/HUM | Health Care | 32d | -0.81 | **0.65** | -4.8% | 21% |
 
+*Warning: this table predates the selection fix and is optimistic twice over: pairs were screened on the full sample, and these are the five pairs with the highest OOS Sharpe, i.e. ranked on the test result. Treat it as a pipeline illustration, not evidence of an edge; a fair summary is the average OOS Sharpe across all selected pairs from a fresh run.*
+
 *Note: Negative IS Sharpe is expected — the strategy trains only on cointegration structure, not signal profitability. The OOS forward-test is the true performance measure.*
 
 ---
@@ -134,10 +141,10 @@ Outputs generated:
 
 ## Resume Bullets
 
-- **Built end-to-end statistical arbitrage engine** in Python screening 800+ S&P 500 within-sector pairs using Engle-Granger and Johansen cointegration tests with rolling stability validation
+- **Built end-to-end statistical arbitrage engine** in Python screening within-sector S&P 500 pairs using Engle-Granger and Johansen cointegration tests with rolling stability validation
 - **Implemented closed-form OU MLE** to estimate mean-reversion speed κ, long-run mean θ, and volatility σ; filtered pairs to half-lives of 5–60 days for tradeable mean-reversion dynamics
-- **Developed Kalman filter state-space model** for adaptive hedge ratio estimation, outperforming 60-day rolling OLS at structural breaks; vectorized backtest shows ~1.2 OOS Sharpe on top pairs
-- **Engineered regime-detection risk layer** using rolling Engle-Granger re-tests that automatically pauses pairs during cointegration breakdowns, reducing drawdowns by ~15% vs unfiltered strategy
+- **Developed Kalman filter state-space model** for adaptive hedge ratio estimation, compared against a 60-day rolling OLS hedge ratio; vectorized backtest reports Sharpe, Sortino, drawdown and hit rate per pair
+- **Engineered regime-detection risk layer** using rolling Engle-Granger re-tests that pauses pairs during cointegration breakdowns
 - **Produced clean IS/OOS validation framework** (60/40 split) with 5bps transaction costs, generating Sharpe, Sortino, max drawdown, and hit rate metrics across full pair universe
 
 ---

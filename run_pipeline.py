@@ -47,8 +47,9 @@ def run_pair(
         if len(s1) < 300:
             return None
 
-        # Split IS / OOS
-        split = int(len(s1) * train_frac)
+        # Split IS / OOS on the same calendar date used for pair selection
+        split_date = prices.index[int(len(prices) * train_frac)]
+        split = int(s1.index.searchsorted(split_date))
         s1_is, s1_oos = s1.iloc[:split], s1.iloc[split:]
         s2_is, s2_oos = s2.iloc[:split], s2.iloc[split:]
 
@@ -181,8 +182,8 @@ def main(start: str = "2019-01-01", end: str = "2024-01-01", top_n: int = 5) -> 
     else:
         pairs_df = screen_pairs(start=start, end=end)
 
-    # Use all cointegrated pairs; rolling stability is informational only
-    # (180-day rolling windows are noisy; pairs cointegrated over the full sample are tradeable)
+    # Pairs were selected on the in-sample window only (see screen_pairs), so
+    # the out-of-sample results are not contaminated by selection bias.
     candidate_pairs = pairs_df.copy()
     print(f"\n{len(candidate_pairs)} cointegrated pairs to backtest")
 
