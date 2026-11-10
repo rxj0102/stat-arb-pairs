@@ -19,3 +19,4 @@ jobs:
       - run: python -m pytest -q
         env:
           MPLBACKEND: Agg
+      - run: python scripts/render_readme.py --check

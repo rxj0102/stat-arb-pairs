@@ -26,13 +26,54 @@ DATA_DIR.mkdir(exist_ok=True)
 # Data download
 # ---------------------------------------------------------------------------
 
+SNAPSHOT_DIR = DATA_DIR / "snapshot"
+
+
+def _close_snapshot(tickers: list[str], start: str, end: str) -> pd.DataFrame:
+    """Adjusted closes from data/snapshot/, downloading only tickers not yet saved.
+
+    Yahoo serves slightly different adjusted history at different times, so the
+    downloads behind the README results are frozen here. Delete the file (or set
+    STAT_ARB_REFRESH_DATA=1) to download again.
+    """
+    import os
+
+    path = SNAPSHOT_DIR / f"close_{start}_{end}.csv"
+    have = pd.DataFrame()
+    if path.exists() and os.environ.get("STAT_ARB_REFRESH_DATA") != "1":
+        have = pd.read_csv(path, index_col=0, parse_dates=True)
+    missing = sorted(set(tickers) - set(have.columns))
+    if missing:
+        import time
+
+        frames = []
+        for i in range(0, len(missing), 20):  # small batches: bulk requests get rate limited
+            batch = missing[i:i + 20]
+            raw = yf.download(batch, start=start, end=end, auto_adjust=True, progress=False)
+            close = raw["Close"] if isinstance(raw.columns, pd.MultiIndex) else raw[["Close"]].rename(columns={"Close": batch[0]})
+            frames.append(close.dropna(axis=1, how="all"))  # never save failed downloads
+            time.sleep(2)
+        new = pd.concat(frames, axis=1) if frames else pd.DataFrame()
+        if new.empty:
+            return have[[t for t in tickers if t in have.columns]]
+        have = new if have.empty else have.join(new, how="outer")
+        SNAPSHOT_DIR.mkdir(parents=True, exist_ok=True)
+        have = have.reindex(sorted(have.columns), axis=1)
+        have.to_csv(path, float_format="%.6f", index_label="Date")
+        have = pd.read_csv(path, index_col=0, parse_dates=True)
+    return have[[t for t in tickers if t in have.columns]]
+
+
+def pairs_cache_path(start: str, end: str, train_frac: float | None) -> Path:
+    """Screen results are cached per sample and selection window, so a cache made
+    under other settings (for example the old full-sample screen) is never reused."""
+    tag = "full" if train_frac is None else f"is{int(round(train_frac * 100))}"
+    return DATA_DIR / f"cointegrated_pairs_{start}_{end}_{tag}.csv"
+
+
 def download_prices(tickers: list[str], start: str, end: str) -> pd.DataFrame:
-    """Download adjusted close prices; drop tickers with >5% missing data."""
-    raw = yf.download(tickers, start=start, end=end, auto_adjust=True, progress=False)
-    if isinstance(raw.columns, pd.MultiIndex):
-        prices = raw["Close"]
-    else:
-        prices = raw[["Close"]]
+    """Adjusted close prices (frozen snapshot); drop tickers with >5% missing data."""
+    prices = _close_snapshot(tickers, start, end)
     threshold = 0.05 * len(prices)
     prices = prices.dropna(axis=1, thresh=int(len(prices) - threshold))
     prices = prices.ffill().dropna()
@@ -180,7 +221,7 @@ def screen_pairs(
         columns=["sector", "ticker1", "ticker2", "eg_stat", "eg_pval", "johansen_pass",
                  "ols_beta", "half_life", "instability_rate", "stable"],
     ).sort_values("eg_pval")
-    out_path = DATA_DIR / "cointegrated_pairs.csv"
+    out_path = pairs_cache_path(start, end, train_frac)
     df.to_csv(out_path, index=False)
     print(f"\nFound {len(df)} cointegrated pairs → {out_path}")
     return df
