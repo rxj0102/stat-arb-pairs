@@ -88,3 +88,16 @@ def test_costs_reduce_pnl():
     res = run_backtest(s1, s2, beta, pos)
     gross = (pos.shift(1).fillna(0) * (s1.pct_change().fillna(0) - beta * s2.pct_change().fillna(0)))
     assert res.pnl.sum() < gross.sum()
+
+
+def test_backtest_uses_previous_day_hedge_ratio():
+    """Day-t P&L must use the hedge set at t-1, not the beta estimated from day-t prices."""
+    idx = pd.date_range("2020-01-01", periods=4, freq="B")
+    s1 = pd.Series([100.0, 100.0, 110.0, 110.0], index=idx)
+    s2 = pd.Series([100.0, 100.0, 110.0, 110.0], index=idx)
+    # Hedge ratio jumps to 1 only on the day of the move, as if it saw the move.
+    beta = pd.Series([0.0, 0.0, 1.0, 1.0], index=idx)
+    pos = pd.Series([1, 1, 1, 1], index=idx)
+    res = run_backtest(s1, s2, beta, pos)
+    # Held hedge on day 3 was 0, so the long S1 leg earns the full 10 percent.
+    assert res.pnl.iloc[2] == pytest.approx(0.10)

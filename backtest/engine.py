@@ -64,7 +64,11 @@ def run_backtest(
     # Spread return: long β*S2 → hedge ratio positions
     # Position = +1: long S1, short β*S2
     # P&L per unit notional
-    spread_ret = r1 - beta * r2
+    # The hedge held during day t was set at the close of t-1, so use the
+    # previous day's hedge ratio. The Kalman beta at t is estimated from day-t
+    # prices; using it for day-t returns is look-ahead.
+    beta_held = beta.shift(1).bfill()
+    spread_ret = r1 - beta_held * r2
 
     # Gross P&L
     gross_pnl = pos.shift(1).fillna(0) * spread_ret

@@ -19,7 +19,7 @@ import yfinance as yf
 
 warnings.filterwarnings("ignore")
 
-from universe.cointegration_screen import screen_pairs, download_prices
+from universe.cointegration_screen import screen_pairs, download_prices, pairs_cache_path
 from models.ou_model import fit_ou_mle
 from models.kalman_hedge import kalman_hedge_ratio, rolling_ols_beta
 from signals.zscore_signals import compute_zscore, generate_signals
@@ -173,9 +173,38 @@ def plot_kalman_vs_ols(top5: list[dict], out_path: Path) -> None:
 # Main
 # ---------------------------------------------------------------------------
 
+def write_summary(results: list[dict], summary_df: pd.DataFrame, start: str, end: str) -> None:
+    """results/summary.json: OOS statistics across all selected pairs and for an
+    equal-weight portfolio of all of them (daily average of per-pair net P&L)."""
+    import json
+
+    oos = pd.concat({f"{r['ticker1']}/{r['ticker2']}": r["bt_oos"].pnl for r in results}, axis=1).fillna(0.0)
+    port = oos.mean(axis=1)
+    sr = float(port.mean() / port.std() * np.sqrt(252)) if port.std() > 0 else 0.0
+    wealth = (1 + port).cumprod()
+    s = summary_df["OOS_sharpe"]
+    out = {
+        "sample": {"start": start, "end": end, "oos_start": str(oos.index[0].date()),
+                   "oos_end": str(oos.index[-1].date()), "oos_days": int(len(oos))},
+        "n_pairs": int(len(results)),
+        "pair_oos_sharpe": {"mean": float(s.mean()), "median": float(s.median()),
+                            "share_positive": float((s > 0).mean()),
+                            "min": float(s.min()), "max": float(s.max())},
+        "pair_is_sharpe_mean": float(summary_df["IS_sharpe"].mean()),
+        "equal_weight_portfolio": {"sharpe": sr, "ann_return": float(port.mean() * 252),
+                                   "ann_vol": float(port.std() * np.sqrt(252)),
+                                   "max_drawdown": float((wealth / wealth.cummax() - 1).min())},
+        "half_life_median": float(summary_df["half_life"].median()),
+    }
+    out_dir = Path("results"); out_dir.mkdir(exist_ok=True)
+    (out_dir / "summary.json").write_text(json.dumps(out, indent=2) + "\n")
+    port.to_frame("equal_weight_net_ret").to_csv(out_dir / "portfolio_oos_returns.csv", float_format="%.8f", index_label="date")
+    print(json.dumps(out, indent=2))
+
+
 def main(start: str = "2019-01-01", end: str = "2024-01-01", top_n: int = 5) -> None:
     # 1. Screen pairs (or load cache)
-    coint_path = DATA_DIR / "cointegrated_pairs.csv"
+    coint_path = pairs_cache_path(start, end, 0.60)
     if coint_path.exists():
         print(f"Loading cached pairs from {coint_path}")
         pairs_df = pd.read_csv(coint_path)
@@ -233,6 +262,10 @@ def main(start: str = "2019-01-01", end: str = "2024-01-01", top_n: int = 5) -> 
     summary_df.to_csv(summary_path, index=False)
     print(f"\nPerformance summary → {summary_path}")
     print(summary_df.head(10).to_string(index=False))
+
+    # 5b. Selection-free summary: every pair that passed the in-sample screen,
+    # not the best ones ranked on the out-of-sample result.
+    write_summary(results, summary_df, start, end)
 
     # 6. Plots
     plot_equity_curves(top5, OUTPUTS / "top5_pairs_equity_curves.png")
