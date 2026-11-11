@@ -27,28 +27,22 @@ def check_regime(
     If test fails, zero out positions until cointegration is restored.
     Returns filtered position series.
     """
-    pos = position.copy().values
+    pos = position.to_numpy(dtype=float, copy=True)
     n = len(pos)
     paused = False
-
     for i in range(window, n):
-        if i % recheck_freq != 0:
-            continue
-        w1 = s1.iloc[i - window: i]
-        w2 = s2.iloc[i - window: i]
-        try:
-            _, pval, _ = coint(w1, w2)
-        except Exception:
-            pval = 1.0
-
-        if pval > pval_break:
-            paused = True
-        else:
-            paused = False
-
+        # Re-test on check days only, using data through the previous close.
+        if i % recheck_freq == 0:
+            w1 = s1.iloc[i - window: i]
+            w2 = s2.iloc[i - window: i]
+            try:
+                _, pval, _ = coint(w1, w2)
+            except Exception:
+                pval = 1.0
+            paused = pval > pval_break
+        # The pause holds on every day until a later check passes.
         if paused:
             pos[i] = 0
-
     return pd.Series(pos, index=position.index, name="position_filtered")
 
 
