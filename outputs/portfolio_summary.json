@@ -1,0 +1,13 @@
+{
+  "n_pairs": 57,
+  "oos_start": "2021-12-29",
+  "oos_end": "2023-12-29",
+  "portfolio_oos_sharpe": -0.395,
+  "portfolio_oos_ann_return": -0.0155,
+  "portfolio_oos_max_drawdown": -0.0627,
+  "pair_oos_sharpe_mean": -0.285,
+  "pair_oos_sharpe_median": -0.417,
+  "pair_oos_sharpe_share_positive": 0.351,
+  "max_weight_per_pair": 0.1,
+  "cost_bps_one_way_per_leg": 5
+}
