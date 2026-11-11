@@ -26,6 +26,7 @@ from models.kalman_hedge import kalman_hedge_ratio, rolling_ols_beta
 from signals.zscore_signals import compute_zscore, generate_signals
 from backtest.engine import run_backtest, split_insample_oos, BacktestResult
 from risk.regime_filter import check_regime, apply_position_cap
+from analysis.break_momentum import break_dates, forward_trend_returns, summarise
 
 OUTPUTS = Path("outputs")
 OUTPUTS.mkdir(exist_ok=True)
@@ -110,6 +111,7 @@ def run_pair(
             "kalman_beta_full": beta_full,
             "s1": s1, "s2": s2,
             "split": split,
+            "oos_inputs": (s1_oos, s2_oos, beta_oos, z_oos),
         }
     except Exception as e:
         print(f"  [SKIP] {t1}/{t2}: {e}")
@@ -270,6 +272,21 @@ def main(start: str = "2019-01-01", end: str = "2024-01-01", top_n: int = 5) -> 
         json.dump(summary, fh, indent=2)
     print("\nOOS portfolio of all selected pairs:")
     print(json.dumps(summary, indent=2))
+
+    # 5c. Break-momentum study (OOS only): does a broken pair keep trending?
+    events = []
+    for r in results:
+        s1o, s2o, bo, zo = r["oos_inputs"]
+        ev = forward_trend_returns(s1o, s2o, bo, zo, break_dates(s1o, s2o))
+        if len(ev):
+            ev.insert(0, "pair", f"{r['ticker1']}/{r['ticker2']}")
+            events.append(ev)
+    events_df = pd.concat(events, ignore_index=True) if events else pd.DataFrame()
+    events_df.to_csv(OUTPUTS / "break_momentum_events.csv", index=False)
+    bm_summary = summarise(events_df)
+    bm_summary.to_csv(OUTPUTS / "break_momentum_summary.csv", index=False)
+    print("\nBreak-momentum study (OOS, net of 20 bps round trip):")
+    print(bm_summary.to_string(index=False))
 
     # 6. Plots
     plot_equity_curves(top5, OUTPUTS / "top5_pairs_equity_curves.png")
