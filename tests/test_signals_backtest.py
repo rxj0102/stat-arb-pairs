@@ -88,3 +88,16 @@ def test_costs_reduce_pnl():
     res = run_backtest(s1, s2, beta, pos)
     gross = (pos.shift(1).fillna(0) * (s1.pct_change().fillna(0) - beta * s2.pct_change().fillna(0)))
     assert res.pnl.sum() < gross.sum()
+
+
+def test_hedge_ratio_is_lagged():
+    """A beta update on day t must not change day t P&L; the hedge held over
+    day t was set at the close of t-1."""
+    s1, s2, beta = _prices()
+    pos = pd.Series(1.0, index=s1.index)
+    base = run_backtest(s1, s2, beta, pos)
+    bumped = beta.copy()
+    bumped.iloc[150] = 3.0  # only day 150 changes
+    alt = run_backtest(s1, s2, bumped, pos)
+    assert base.pnl.iloc[150] == alt.pnl.iloc[150]
+    assert base.pnl.iloc[151] != alt.pnl.iloc[151]

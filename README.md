@@ -34,7 +34,11 @@ stat-arb-pairs/
 
 ## Corrections
 
-- **Selection bias removed.** Cointegrated pairs were screened on the full sample, including the period later reported as out-of-sample. Pairs are now selected on the first 60% of dates only, the same split `run_pipeline.py` uses, so out-of-sample Sharpe ratios are genuinely out of sample. `data/cointegrated_pairs.csv` and `outputs/` predate this change; delete the CSV and rerun `python run_pipeline.py` to refresh them.
+- **Selection bias removed.** Pairs are selected on the first 60% of dates only, the same split `run_pipeline.py` uses, so out-of-sample Sharpe ratios are genuinely out of sample.
+- **Regime pause fixed.** The cointegration overlay used to zero a position only on the re-test day itself, so a paused pair kept trading on the four days between checks. The pause now holds until a later check passes.
+- **Hedge ratio lag.** Daily spread P&L used the Kalman beta updated with that same day's prices. It now uses the beta known at the prior close.
+- **Position cap in force.** The 10% per-pair cap was described here but never applied, and it sized pairs with full-sample volatility. It now uses trailing 60 day volatility (shifted one day) and is applied to the combined portfolio.
+- **Headline changed from top 5 to all pairs.** The old table ranked pairs by their own OOS Sharpe. The results below cover every selected pair.
 - An empty price download now raises instead of silently writing an empty pair list.
 
 ## Methodology
@@ -95,26 +99,50 @@ Stop-loss: |z| > 3.0  →  immediate exit
 - **Metrics**: Sharpe, Sortino, max drawdown, hit rate, avg P&L per trade
 
 ### 7. Risk Management
-- **Regime detection**: Engle-Granger re-tested every 5 trading days on trailing 60 days. If `p > 0.10`, all positions in that pair are closed ("paused") until cointegration resumes.
-- **Position cap**: No single pair exceeds 10% of total portfolio risk allocation (volatility-weighted).
+- **Regime detection**: Engle-Granger re-tested every 5 trading days on trailing 60 days. If `p > 0.10`, all positions in that pair are closed (paused) until cointegration resumes.
+- **Position cap**: Pairs are combined with inverse-volatility weights from trailing 60 day P&L (known at the prior close), each capped at 10%. Weights are not renormalised after capping, so any unallocated share stays in cash.
 
 ---
 
-## Results - Top 5 Pairs (Out-of-Sample, 2019–2024)
+## Results (out of sample, all selected pairs)
 
-*60% in-sample fit / 40% OOS trading. 5bps one-way transaction costs per leg.*
+Produced by `python run_pipeline.py` with the default window (2019-01-01 to 2024-01-01). Pairs are selected on the first 60% of dates; everything below is from the remaining 40% (2021-12-29 to 2023-12-29). Costs are 5 bps one way per leg. Source files: `outputs/portfolio_summary.json`, `outputs/pair_performance_summary.csv`.
 
-| Pair | Sector | Half-Life | IS Sharpe | OOS Sharpe | Max DD | Hit Rate |
-|------|--------|-----------|-----------|------------|--------|----------|
-| JNJ/TMO | Health Care | 26d | -0.16 | **1.01** | -8.8% | 32% |
-| PM/MO | Consumer Staples | 33d | -0.51 | **0.99** | -9.3% | 22% |
-| PG/COST | Consumer Staples | 24d | -0.68 | **0.90** | -3.3% | 32% |
-| MSFT/AMD | Info Technology | 28d | -0.53 | **0.86** | -40.3% | 27% |
-| JNJ/HUM | Health Care | 32d | -0.81 | **0.65** | -4.8% | 21% |
+| Measure | Value |
+|---------|-------|
+| Pairs selected in sample | 57 |
+| Capped portfolio OOS Sharpe | -0.40 |
+| Capped portfolio OOS annual return | -1.55% |
+| Capped portfolio OOS max drawdown | -6.27% |
+| Mean per-pair OOS Sharpe | -0.28 |
+| Median per-pair OOS Sharpe | -0.42 |
+| Share of pairs with positive OOS Sharpe | 35.1% |
 
-*Warning: this table predates the selection fix and is optimistic twice over: pairs were screened on the full sample, and these are the five pairs with the highest OOS Sharpe, i.e. ranked on the test result. Treat it as a pipeline illustration, not evidence of an edge; a fair summary is the average OOS Sharpe across all selected pairs from a fresh run.*
+**Reading this honestly.** Cointegration found in 2019 to 2021 did not translate into profitable mean reversion in 2022 and 2023. The capped portfolio lost money out of sample and about two thirds of pairs had a negative OOS Sharpe. Individual pairs with high OOS Sharpe exist in the CSV, but picking them after the fact is the selection bias this repo now avoids.
 
-*Note: Negative IS Sharpe is expected - the strategy trains only on cointegration structure, not signal profitability. The OOS forward-test is the true performance measure.*
+### Does a broken pair keep trending?
+
+The Oil Money study by je-suis-tm found that when a fitted FX and crude relationship broke, the deviation kept going, so the break worked as a trend-following entry. `analysis/break_momentum.py` tests the same idea here. At each regime check day where the trailing 60 day Engle-Granger test newly fails (the same rule that pauses trading), the spread is taken in the direction of its prior z-score, entered at that close, and held for h days, net of a 20 bps round trip. OOS segment only. Source: `outputs/break_momentum_summary.csv`.
+
+| Holding period | Break events | Mean net return | t-stat | Hit rate |
+|----------------|--------------|-----------------|--------|----------|
+| 5 days | 296 | -0.46% | -1.11 | 44.3% |
+| 10 days | 288 | -0.66% | -1.02 | 46.9% |
+| 20 days | 286 | -0.56% | -0.55 | 45.8% |
+
+No horizon shows momentum. Mean returns are negative and none is significant. The t-stats treat events as independent, and 20 day windows within a pair can overlap, so they overstate significance if anything. On this universe a cointegration break is a reason to stop trading the pair, not an entry signal.
+
+### How much does the result depend on the settings?
+
+`python -m analysis.sensitivity` reruns the whole OOS pipeline on the same 57 pairs for every combination of entry threshold and z-score window, and reports the capped portfolio OOS Sharpe. Nothing is chosen from it; the defaults stay entry 1.5 and window 60. Source: `outputs/sensitivity_grid.csv`, `outputs/sensitivity_grid.png`.
+
+| z-score window | entry 1.0 | entry 1.5 | entry 2.0 | entry 2.5 |
+|---|---|---|---|---|
+| 30 days | 0.12 | 0.52 | 0.30 | 0.94 |
+| 60 days | -0.61 | -0.40 | -0.27 | -0.30 |
+| 90 days | -0.67 | -0.26 | -0.85 | -0.64 |
+
+The window decides the sign: every 30-day cell is positive and every 60 and 90-day cell is negative, while the median per-pair OOS Sharpe stays between -0.42 and 0.08 in every cell. Twelve settings were tried, so the best cell (0.94) is what a search over noise would also produce at the top; choosing the 30-day window now, after seeing this table, would repeat the selection error the Corrections section removes. A fair next test is to fix the window on the in-sample period and confirm it on a later period not used here.
 
 ---
 
@@ -136,6 +164,9 @@ Outputs generated:
 - `outputs/pair_performance_summary.csv` - full performance table
 - `outputs/top5_pairs_equity_curves.png` - OOS equity curves
 - `outputs/kalman_vs_ols_beta.png` - Kalman vs rolling OLS comparison
+- `outputs/portfolio_summary.json` - capped portfolio and per-pair OOS Sharpe distribution
+- `outputs/break_momentum_events.csv`, `outputs/break_momentum_summary.csv` - break-momentum study
+- `outputs/sensitivity_grid.csv`, `outputs/sensitivity_grid.png` - entry and window sensitivity (`python -m analysis.sensitivity`)
 
 ---
 
@@ -146,6 +177,7 @@ Outputs generated:
 - **Developed Kalman filter state-space model** for adaptive hedge ratio estimation, compared against a 60-day rolling OLS hedge ratio; vectorized backtest reports Sharpe, Sortino, drawdown and hit rate per pair
 - **Engineered regime-detection risk layer** using rolling Engle-Granger re-tests that pauses pairs during cointegration breakdowns
 - **Produced clean IS/OOS validation framework** (60/40 split) with 5bps transaction costs, generating Sharpe, Sortino, max drawdown, and hit rate metrics across full pair universe
+- **Tested break momentum** out of sample: whether a pair that loses cointegration keeps trending, as in the Oil Money FX study. It does not on this universe
 
 ---
 

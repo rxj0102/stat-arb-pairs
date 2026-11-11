@@ -6,6 +6,7 @@ Usage:
 """
 
 import argparse
+import json
 import warnings
 from pathlib import Path
 
@@ -25,6 +26,7 @@ from models.kalman_hedge import kalman_hedge_ratio, rolling_ols_beta
 from signals.zscore_signals import compute_zscore, generate_signals
 from backtest.engine import run_backtest, split_insample_oos, BacktestResult
 from risk.regime_filter import check_regime, apply_position_cap
+from analysis.break_momentum import break_dates, forward_trend_returns, summarise
 
 OUTPUTS = Path("outputs")
 OUTPUTS.mkdir(exist_ok=True)
@@ -37,7 +39,8 @@ DATA_DIR.mkdir(exist_ok=True)
 # ---------------------------------------------------------------------------
 
 def run_pair(
-    t1: str, t2: str, prices: pd.DataFrame, train_frac: float = 0.60
+    t1: str, t2: str, prices: pd.DataFrame, train_frac: float = 0.60,
+    entry_z: float = 1.5, z_window: int = 60,
 ) -> dict | None:
     try:
         s1 = prices[t1].dropna()
@@ -75,12 +78,12 @@ def run_pair(
         ols_beta_full = rolling_ols_beta(s1, s2, window=60)
 
         # Signals
-        z_is = compute_zscore(spread_is)
-        pos_is = generate_signals(z_is)
+        z_is = compute_zscore(spread_is, window=z_window)
+        pos_is = generate_signals(z_is, entry_z=entry_z)
         pos_is = check_regime(s1_is, s2_is, pos_is)
 
-        z_oos = compute_zscore(spread_oos)
-        pos_oos = generate_signals(z_oos)
+        z_oos = compute_zscore(spread_oos, window=z_window)
+        pos_oos = generate_signals(z_oos, entry_z=entry_z)
         pos_oos = check_regime(s1_oos, s2_oos, pos_oos)
 
         # Backtests
@@ -109,6 +112,7 @@ def run_pair(
             "kalman_beta_full": beta_full,
             "s1": s1, "s2": s2,
             "split": split,
+            "oos_inputs": (s1_oos, s2_oos, beta_oos, z_oos),
         }
     except Exception as e:
         print(f"  [SKIP] {t1}/{t2}: {e}")
@@ -173,6 +177,35 @@ def plot_kalman_vs_ols(top5: list[dict], out_path: Path) -> None:
 # Main
 # ---------------------------------------------------------------------------
 
+def portfolio_summary(results: list[dict], max_weight: float = 0.10) -> dict:
+    """Out-of-sample summary across ALL selected pairs, not a ranked subset.
+
+    Pairs are combined with trailing inverse-volatility weights capped at
+    ``max_weight`` (risk.regime_filter.apply_position_cap), and the
+    distribution of per-pair OOS Sharpe ratios is reported alongside.
+    """
+    oos = {f"{r['ticker1']}/{r['ticker2']}": r["bt_oos"].pnl for r in results}
+    capped = apply_position_cap(oos, max_weight=max_weight)
+    port = pd.DataFrame(capped).fillna(0.0).sum(axis=1)
+    ann = np.sqrt(252)
+    sd = port.std()
+    wealth = (1 + port).cumprod()
+    sharpes = pd.Series([r["OOS_sharpe"] for r in results], dtype=float)
+    return {
+        "n_pairs": int(len(results)),
+        "oos_start": str(port.index.min().date()),
+        "oos_end": str(port.index.max().date()),
+        "portfolio_oos_sharpe": round(float(port.mean() / sd * ann) if sd > 0 else 0.0, 3),
+        "portfolio_oos_ann_return": round(float(port.mean() * 252), 4),
+        "portfolio_oos_max_drawdown": round(float((wealth / wealth.cummax() - 1).min()), 4),
+        "pair_oos_sharpe_mean": round(float(sharpes.mean()), 3),
+        "pair_oos_sharpe_median": round(float(sharpes.median()), 3),
+        "pair_oos_sharpe_share_positive": round(float((sharpes > 0).mean()), 3),
+        "max_weight_per_pair": max_weight,
+        "cost_bps_one_way_per_leg": 5,
+    }
+
+
 def main(start: str = "2019-01-01", end: str = "2024-01-01", top_n: int = 5) -> None:
     # 1. Screen pairs (or load cache)
     coint_path = DATA_DIR / "cointegrated_pairs.csv"
@@ -233,6 +266,28 @@ def main(start: str = "2019-01-01", end: str = "2024-01-01", top_n: int = 5) -> 
     summary_df.to_csv(summary_path, index=False)
     print(f"\nPerformance summary → {summary_path}")
     print(summary_df.head(10).to_string(index=False))
+
+    # 5b. Portfolio of all selected pairs (the headline number)
+    summary = portfolio_summary(results)
+    with open(OUTPUTS / "portfolio_summary.json", "w") as fh:
+        json.dump(summary, fh, indent=2)
+    print("\nOOS portfolio of all selected pairs:")
+    print(json.dumps(summary, indent=2))
+
+    # 5c. Break-momentum study (OOS only): does a broken pair keep trending?
+    events = []
+    for r in results:
+        s1o, s2o, bo, zo = r["oos_inputs"]
+        ev = forward_trend_returns(s1o, s2o, bo, zo, break_dates(s1o, s2o))
+        if len(ev):
+            ev.insert(0, "pair", f"{r['ticker1']}/{r['ticker2']}")
+            events.append(ev)
+    events_df = pd.concat(events, ignore_index=True) if events else pd.DataFrame()
+    events_df.to_csv(OUTPUTS / "break_momentum_events.csv", index=False)
+    bm_summary = summarise(events_df)
+    bm_summary.to_csv(OUTPUTS / "break_momentum_summary.csv", index=False)
+    print("\nBreak-momentum study (OOS, net of 20 bps round trip):")
+    print(bm_summary.to_string(index=False))
 
     # 6. Plots
     plot_equity_curves(top5, OUTPUTS / "top5_pairs_equity_curves.png")
