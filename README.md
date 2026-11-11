@@ -132,6 +132,18 @@ The Oil Money study by je-suis-tm found that when a fitted FX and crude relation
 
 No horizon shows momentum. Mean returns are negative and none is significant. The t-stats treat events as independent, and 20 day windows within a pair can overlap, so they overstate significance if anything. On this universe a cointegration break is a reason to stop trading the pair, not an entry signal.
 
+### How much does the result depend on the settings?
+
+`python -m analysis.sensitivity` reruns the whole OOS pipeline on the same 57 pairs for every combination of entry threshold and z-score window, and reports the capped portfolio OOS Sharpe. Nothing is chosen from it; the defaults stay entry 1.5 and window 60. Source: `outputs/sensitivity_grid.csv`, `outputs/sensitivity_grid.png`.
+
+| z-score window | entry 1.0 | entry 1.5 | entry 2.0 | entry 2.5 |
+|---|---|---|---|---|
+| 30 days | 0.12 | 0.52 | 0.30 | 0.94 |
+| 60 days | -0.61 | -0.40 | -0.27 | -0.30 |
+| 90 days | -0.67 | -0.26 | -0.85 | -0.64 |
+
+The window decides the sign: every 30-day cell is positive and every 60 and 90-day cell is negative, while the median per-pair OOS Sharpe stays between -0.42 and 0.08 in every cell. Twelve settings were tried, so the best cell (0.94) is what a search over noise would also produce at the top; choosing the 30-day window now, after seeing this table, would repeat the selection error the Corrections section removes. A fair next test is to fix the window on the in-sample period and confirm it on a later period not used here.
+
 ---
 
 ## Quickstart
@@ -154,6 +166,7 @@ Outputs generated:
 - `outputs/kalman_vs_ols_beta.png` - Kalman vs rolling OLS comparison
 - `outputs/portfolio_summary.json` - capped portfolio and per-pair OOS Sharpe distribution
 - `outputs/break_momentum_events.csv`, `outputs/break_momentum_summary.csv` - break-momentum study
+- `outputs/sensitivity_grid.csv`, `outputs/sensitivity_grid.png` - entry and window sensitivity (`python -m analysis.sensitivity`)
 
 ---
 
