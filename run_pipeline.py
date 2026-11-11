@@ -39,7 +39,8 @@ DATA_DIR.mkdir(exist_ok=True)
 # ---------------------------------------------------------------------------
 
 def run_pair(
-    t1: str, t2: str, prices: pd.DataFrame, train_frac: float = 0.60
+    t1: str, t2: str, prices: pd.DataFrame, train_frac: float = 0.60,
+    entry_z: float = 1.5, z_window: int = 60,
 ) -> dict | None:
     try:
         s1 = prices[t1].dropna()
@@ -77,12 +78,12 @@ def run_pair(
         ols_beta_full = rolling_ols_beta(s1, s2, window=60)
 
         # Signals
-        z_is = compute_zscore(spread_is)
-        pos_is = generate_signals(z_is)
+        z_is = compute_zscore(spread_is, window=z_window)
+        pos_is = generate_signals(z_is, entry_z=entry_z)
         pos_is = check_regime(s1_is, s2_is, pos_is)
 
-        z_oos = compute_zscore(spread_oos)
-        pos_oos = generate_signals(z_oos)
+        z_oos = compute_zscore(spread_oos, window=z_window)
+        pos_oos = generate_signals(z_oos, entry_z=entry_z)
         pos_oos = check_regime(s1_oos, s2_oos, pos_oos)
 
         # Backtests
