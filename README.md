@@ -49,6 +49,7 @@ Two independent tests must pass:
 
 | Test | Threshold |
 |------|-----------|
+| **Benjamini-Hochberg** q-value across all pairs tested | reported; optional filter `screen_pairs(fdr=0.10)` |
 | **Engle-Granger** ADF on OLS spread residuals | p-value < 0.05 |
 | **Johansen** trace statistic rank test | 5% critical value |
 
@@ -104,7 +105,7 @@ Stop-loss: |z| > 3.0  →  immediate exit
 
 *Pairs screened on the first 60% of dates (2019-01-02 to 2021-12-28); traded out of sample from 2021-12-29 to 2023-12-29. 5bps one-way transaction costs per leg. Copied from `outputs/pair_performance_summary.csv` and `data/cointegrated_pairs.csv`.*
 
-Nine pairs passed the Engle-Granger screen (p < 0.05, half-life in range). Only one also passed Johansen, and none passed the rolling stability filter. With 142 pairs tested at 5%, about 7 false positives are expected by chance, so 9 hits is close to what noise alone would produce.
+Nine pairs passed the Engle-Granger screen (p < 0.05, half-life in range). Only one also passed Johansen, and none passed the rolling stability filter. With 142 pairs tested at 5%, about 7 false positives are expected by chance, so 9 hits is close to what noise alone would produce. A Benjamini-Hochberg correction across all 142 tests confirms it: no pair has a false discovery rate q-value below 0.10, and the best (Cnstr/BldMt, p = 0.0015) has q = 0.21. Every test is listed in `data/all_pair_tests.csv`.
 
 | Pair | Sector | Half-Life | IS Sharpe | OOS Sharpe | Max DD | Hit Rate |
 |------|--------|-----------|-----------|------------|--------|----------|

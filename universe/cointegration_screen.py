@@ -47,6 +47,20 @@ def download_prices(tickers: list[str], start: str, end: str) -> pd.DataFrame:
 # Cointegration tests
 # ---------------------------------------------------------------------------
 
+def benjamini_hochberg(pvals: np.ndarray) -> np.ndarray:
+    """Benjamini-Hochberg (1995) adjusted p-values (q-values), same order as input."""
+    p = np.asarray(pvals, dtype=float)
+    n = len(p)
+    if n == 0:
+        return p
+    order = np.argsort(p)
+    ranked = p[order] * n / np.arange(1, n + 1)
+    q = np.minimum.accumulate(ranked[::-1])[::-1]
+    out = np.empty(n)
+    out[order] = np.minimum(q, 1.0)
+    return out
+
+
 def engle_granger_test(s1: pd.Series, s2: pd.Series) -> dict:
     """Return EG test statistic, p-value, and OLS hedge ratio."""
     score, pvalue, _ = coint(s1, s2)
@@ -121,12 +135,18 @@ def screen_pairs(
     halflife_max: int = 60,
     instability_threshold: float = 0.30,
     train_frac: float | None = 0.60,
+    fdr: float | None = None,
 ) -> pd.DataFrame:
     """Screen sector pairs for cointegration.
 
     Pairs are selected using only the first ``train_frac`` of the sample, so the
     remaining out-of-sample period never influences which pairs are traded.
     Pass ``train_frac=None`` to screen on the whole sample (selection bias).
+
+    Multiple testing: every Engle-Granger p-value is kept and Benjamini-Hochberg
+    q-values are computed across all pairs tested (column ``eg_qval``). All
+    tests go to ``data/all_pair_tests.csv``. With ``fdr`` set, pairs must also
+    have ``eg_qval < fdr``.
     """
     all_tickers = [t for tickers in SECTOR_TICKERS.values() for t in tickers]
     print("Downloading price data...")
@@ -138,6 +158,7 @@ def screen_pairs(
     available = set(prices.columns)
 
     records = []
+    all_tests = []
 
     for sector, tickers in SECTOR_TICKERS.items():
         sector_tickers = [t for t in tickers if t in available]
@@ -152,6 +173,7 @@ def screen_pairs(
             s1, s2 = s1.loc[common], s2.loc[common]
 
             eg = engle_granger_test(s1, s2)
+            all_tests.append({"sector": sector, "ticker1": t1, "ticker2": t2, "eg_pval": eg["eg_pval"]})
             if eg["eg_pval"] >= eg_pval_threshold:
                 continue
 
@@ -179,10 +201,25 @@ def screen_pairs(
                 }
             )
 
+    tests = pd.DataFrame(all_tests, columns=["sector", "ticker1", "ticker2", "eg_pval"])
+    tests["eg_qval"] = benjamini_hochberg(tests["eg_pval"].values) if len(tests) else []
+    tests.sort_values("eg_pval").to_csv(DATA_DIR / "all_pair_tests.csv", index=False)
+    qmap = {(r.ticker1, r.ticker2): r.eg_qval for r in tests.itertuples()}
+    for rec in records:
+        rec["eg_qval"] = round(float(qmap[(rec["ticker1"], rec["ticker2"])]), 4)
+    if fdr is not None:
+        records = [r for r in records if r["eg_qval"] < fdr]
+    n_tests = len(tests)
+    print(f"\nMultiple testing: {n_tests} pairs tested; "
+          f"{int((tests['eg_pval'] < eg_pval_threshold).sum())} with EG p < {eg_pval_threshold} "
+          f"(about {n_tests * eg_pval_threshold:.1f} expected by chance); "
+          f"{int((tests['eg_qval'] < 0.05).sum())} with BH q < 0.05, "
+          f"{int((tests['eg_qval'] < 0.10).sum())} with q < 0.10")
+
     df = pd.DataFrame(
         records,
         columns=["sector", "ticker1", "ticker2", "eg_stat", "eg_pval", "johansen_pass",
-                 "ols_beta", "half_life", "instability_rate", "stable"],
+                 "ols_beta", "half_life", "instability_rate", "stable", "eg_qval"],
     ).sort_values("eg_pval")
     out_path = DATA_DIR / "cointegrated_pairs.csv"
     df.to_csv(out_path, index=False)
