@@ -1,43 +1,10 @@
 sector,ticker1,ticker2,eg_stat,eg_pval,johansen_pass,ols_beta,half_life,instability_rate,stable
-Financials,BAC,PNC,-4.7929,0.0004,True,0.2187,19.26,0.778,False
-Information Technology,AMD,NOW,-4.214,0.0035,True,1.1739,24.69,1.0,False
-Health Care,UNH,ABBV,-4.1336,0.0046,True,3.3556,26.62,0.963,False
-Health Care,ABBV,ELV,-4.0781,0.0055,True,0.3228,26.01,0.981,False
-Energy,XOM,VLO,-3.9095,0.0096,True,0.838,28.21,1.0,False
-Consumer Staples,PM,MO,-3.8797,0.0106,True,2.6269,33.24,1.0,False
-Information Technology,ADBE,CRM,-3.8515,0.0116,True,2.587,38.12,0.907,False
-Energy,HAL,BKR,-3.7624,0.0152,True,1.2977,34.66,0.944,False
-Consumer Staples,KO,HSY,-3.7369,0.0164,False,0.1524,32.04,0.87,False
-Energy,CVX,EOG,-3.7363,0.0164,False,1.0441,33.26,0.926,False
-Consumer Staples,PG,COST,-3.7253,0.017,False,0.1484,37.81,0.833,False
-Financials,MET,ALL,-3.6727,0.0199,True,0.6528,37.83,1.0,False
-Information Technology,ACN,AMAT,-3.6562,0.0208,True,1.4962,31.27,0.87,False
-Consumer Staples,PM,SJM,-3.6535,0.021,False,0.617,41.93,1.0,False
-Consumer Staples,KO,PM,-3.6389,0.0219,True,0.4912,35.69,0.963,False
-Consumer Staples,CL,CHD,-3.5907,0.0252,True,0.4634,30.37,0.944,False
-Information Technology,NOW,LRCX,-3.5881,0.0253,False,1.4606,34.79,0.907,False
-Consumer Staples,GIS,SJM,-3.5829,0.0257,True,0.5987,47.28,0.907,False
-Information Technology,ORCL,ADI,-3.5812,0.0258,False,0.6077,31.49,0.852,False
-Consumer Staples,PEP,PM,-3.5556,0.0278,False,1.6967,47.52,0.963,False
-Information Technology,IBM,KLAC,-3.55,0.0282,False,0.0984,38.23,0.87,False
-Health Care,JNJ,HUM,-3.5337,0.0295,True,0.18,35.98,0.852,False
-Energy,OXY,APA,-3.523,0.0304,False,1.7292,42.21,0.926,False
-Energy,CVX,APA,-3.4791,0.0343,False,2.938,39.07,0.981,False
-Health Care,ABBV,CI,-3.4721,0.0349,False,0.5796,36.85,0.944,False
-Health Care,ABT,DHR,-3.4664,0.0355,True,0.2791,32.04,0.926,False
-Consumer Staples,CPB,CAG,-3.4523,0.0369,True,1.1291,37.14,0.63,False
-Information Technology,ACN,AMD,-3.4506,0.037,False,1.6945,31.05,0.907,False
-Financials,AXP,CB,-3.4502,0.0371,False,0.7487,43.76,0.981,False
-Health Care,JNJ,ELV,-3.4494,0.0372,False,0.1644,33.58,0.926,False
-Information Technology,ORCL,KLAC,-3.4441,0.0377,False,0.1582,34.81,0.907,False
-Energy,BKR,FANG,-3.4395,0.0382,False,0.1628,42.67,0.889,False
-Health Care,JNJ,TMO,-3.4362,0.0385,True,0.1304,28.13,0.963,False
-Health Care,AMGN,CI,-3.4203,0.0401,False,0.5014,36.68,0.907,False
-Financials,GS,MS,-3.4044,0.0419,True,3.4602,36.35,0.926,False
-Information Technology,MSFT,AMD,-3.4012,0.0422,False,2.0556,38.16,0.759,False
-Consumer Staples,PM,MDLZ,-3.4014,0.0422,False,1.3577,46.35,0.944,False
-Energy,EOG,APA,-3.3997,0.0424,True,2.8134,35.16,0.889,False
-Energy,HAL,APA,-3.3903,0.0434,True,0.8284,36.82,0.963,False
-Information Technology,ADI,KLAC,-3.3854,0.044,False,0.2426,34.95,0.944,False
-Health Care,AMGN,HUM,-3.3761,0.0451,True,0.3163,30.77,0.963,False
-Financials,AXP,ALL,-3.3381,0.0497,False,1.5409,41.88,0.981,False
+Industrials,Cnstr,BldMt,-4.4509,0.0015,True,1.146,12.9,0.862,False
+Information Technology,Softw,LabEq,-3.9483,0.0085,False,1.1078,16.02,0.793,False
+Consumer Staples,Beer,Hshld,-3.8032,0.0134,False,0.7166,15.56,0.862,False
+Financials,Insur,Fin,-3.7149,0.0175,False,0.5035,18.2,0.897,False
+Industrials,Mach,ElcEq,-3.6608,0.0206,False,0.9744,37.35,0.897,False
+Materials,Mines,Boxes,-3.5512,0.0281,False,2.281,20.91,0.966,False
+Industrials,Mach,Cnstr,-3.5157,0.031,False,0.9675,19.95,0.862,False
+Industrials,Ships,FabPr,-3.3588,0.0471,False,0.2734,28.02,0.897,False
+Consumer Discretionary,PerSv,Meals,-3.348,0.0485,False,0.8606,19.6,0.793,False

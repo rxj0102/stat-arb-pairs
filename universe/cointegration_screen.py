@@ -9,7 +9,6 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import yfinance as yf
 from statsmodels.tsa.stattools import adfuller, coint
 from statsmodels.tsa.vector_ar.vecm import coint_johansen
 from tqdm import tqdm
@@ -27,12 +26,17 @@ DATA_DIR.mkdir(exist_ok=True)
 # ---------------------------------------------------------------------------
 
 def download_prices(tickers: list[str], start: str, end: str) -> pd.DataFrame:
-    """Download adjusted close prices; drop tickers with >5% missing data."""
-    raw = yf.download(tickers, start=start, end=end, auto_adjust=True, progress=False)
-    if isinstance(raw.columns, pd.MultiIndex):
-        prices = raw["Close"]
-    else:
-        prices = raw[["Close"]]
+    """Total return indices for Ken French 49 industry portfolios (open data).
+
+    ``tickers`` are industry names from universe.sector_map. ``end`` is
+    exclusive. Industries with >5% missing data are dropped.
+    """
+    from universe.opendata import french
+
+    rets = french("49_Industry_Portfolios_daily", start=start)
+    rets = rets[rets.index < pd.Timestamp(end)]
+    rets = rets[[t for t in tickers if t in rets.columns]]
+    prices = 100.0 * (1.0 + rets).cumprod().where(rets.notna())
     threshold = 0.05 * len(prices)
     prices = prices.dropna(axis=1, thresh=int(len(prices) - threshold))
     prices = prices.ffill().dropna()

@@ -27,7 +27,7 @@ def check_regime(
     If test fails, zero out positions until cointegration is restored.
     Returns filtered position series.
     """
-    pos = position.copy().values
+    pos = position.to_numpy(copy=True)  # writable under pandas copy-on-write
     n = len(pos)
     paused = False
 
