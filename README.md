@@ -100,7 +100,7 @@ Stop-loss: |z| > 3.0  →  immediate exit
 - **Metrics**: Sharpe, Sortino, max drawdown, hit rate, avg P&L per trade
 
 ### 7. Risk Management
-- **Regime detection**: Engle-Granger re-tested every 5 trading days on trailing 60 days. If `p > 0.10`, all positions in that pair are closed ("paused") until cointegration resumes.
+- **Regime detection**: Engle-Granger re-tested every 5 trading days on trailing 60 days. If `p > 0.10`, all positions in that pair are closed (*paused*) until cointegration resumes.
 - **Position cap**: No single pair exceeds 10% of total portfolio risk allocation (volatility-weighted).
 
 ---
