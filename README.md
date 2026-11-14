@@ -167,3 +167,11 @@ Outputs generated:
 | `matplotlib / seaborn` | Visualisation |
 | `pykalman` | Kalman filter reference (manual implementation used) |
 | `tqdm` | Progress bars |
+
+## Data snapshot
+
+`data/open_data_manifest.json` records every open data file behind the results above (SHA-256, rows, first and last date). Ken French and FRED occasionally revise history; after a fresh download, check whether the inputs still match with:
+
+```bash
+python -c "from universe.opendata import verify_manifest; print(verify_manifest('data/open_data_manifest.json'))"
+```
