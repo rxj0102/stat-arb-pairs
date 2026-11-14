@@ -3,7 +3,7 @@
 [![CI](https://github.com/rxj0102/stat-arb-pairs/actions/workflows/ci.yml/badge.svg)](https://github.com/rxj0102/stat-arb-pairs/actions/workflows/ci.yml)
 ### Kalman Filter Hedge Ratio · OU Process · Regime Detection
 
-A pairs trading research system that screens the S&P 500 universe for cointegrated pairs, fits Ornstein-Uhlenbeck dynamics, and generates mean-reversion signals using a dynamic Kalman-filter hedge ratio - with full out-of-sample backtesting and regime-aware risk management.
+A pairs trading research system that screens Ken French industry portfolios (free open data) for cointegrated pairs, fits Ornstein-Uhlenbeck dynamics, and generates mean-reversion signals using a dynamic Kalman-filter hedge ratio - with full out-of-sample backtesting and regime-aware risk management.
 
 ---
 
@@ -34,21 +34,26 @@ stat-arb-pairs/
 
 ## Corrections
 
-- **Selection bias removed.** Cointegrated pairs were screened on the full sample, including the period later reported as out-of-sample. Pairs are now selected on the first 60% of dates only, the same split `run_pipeline.py` uses, so out-of-sample Sharpe ratios are genuinely out of sample. `data/cointegrated_pairs.csv` and `outputs/` predate this change; delete the CSV and rerun `python run_pipeline.py` to refresh them.
+- **Selection bias removed.** Cointegrated pairs were screened on the full sample, including the period later reported as out-of-sample. Pairs are now selected on the first 60% of dates only, the same split `run_pipeline.py` uses, so out-of-sample Sharpe ratios are genuinely out of sample. `data/cointegrated_pairs_2019-01-01_2024-01-01_is60.csv` and `outputs/` have been regenerated with the fix on open data.
 - An empty price download now raises instead of silently writing an empty pair list.
+- **Same-day hedge ratio.** Daily spread P&L used the Kalman beta estimated from that day's prices. It now uses the prior day's hedge ratio, the one actually held. Covered by tests.
+- **Cointegration pause.** A failed rolling cointegration check paused a pair for one step only; the pause now holds until a later check passes.
+- **Per-pair cap.** The position cap now uses trailing volatility and is applied across all selected pairs, which is how the portfolio rows in Results are built.
+- **Data.** Yahoo Finance was replaced by Ken French 49 industry portfolios (open data), so pairs are industries rather than single stocks. Results above were regenerated on 2026-11-14 after all of these changes.
 
 ## Methodology
 
 ### 1. Universe Construction
-- **Sectors**: Information Technology, Financials, Health Care, Consumer Staples, Energy (S&P 500 GICS groupings)
-- ~190 tickers across 5 sectors → ~855 within-sector pairs tested
-- Data: `yfinance` adjusted close prices, 5-year history (2019–2024)
+- **Universe**: Ken French 49 industry portfolios (value weighted, daily total returns), grouped into 8 broad sectors in `universe/sector_map.py` ('Other' left out). The earlier version used about 100 single S&P 500 stocks from Yahoo Finance; there is no free open source for daily single-stock prices, so industry portfolios are the closest open substitute.
+- 48 industries across 8 sectors, 142 within-sector pairs tested
+- Data: Ken French Data Library, 2019-01-02 to 2023-12-29 (1,258 days), loaded by `universe/opendata.py`
 
 ### 2. Cointegration Screening
 Two independent tests must pass:
 
 | Test | Threshold |
 |------|-----------|
+| **Benjamini-Hochberg** q-value across all pairs tested | reported; optional filter `screen_pairs(fdr=0.10)` |
 | **Engle-Granger** ADF on OLS spread residuals | p-value < 0.05 |
 | **Johansen** trace statistic rank test | 5% critical value |
 
@@ -95,26 +100,43 @@ Stop-loss: |z| > 3.0  →  immediate exit
 - **Metrics**: Sharpe, Sortino, max drawdown, hit rate, avg P&L per trade
 
 ### 7. Risk Management
-- **Regime detection**: Engle-Granger re-tested every 5 trading days on trailing 60 days. If `p > 0.10`, all positions in that pair are closed ("paused") until cointegration resumes.
+- **Regime detection**: Engle-Granger re-tested every 5 trading days on trailing 60 days. If `p > 0.10`, all positions in that pair are closed (*paused*) until cointegration resumes.
 - **Position cap**: No single pair exceeds 10% of total portfolio risk allocation (volatility-weighted).
 
 ---
 
-## Results - Top 5 Pairs (Out-of-Sample, 2019–2024)
+## Results (Out-of-Sample, open data)
 
-*60% in-sample fit / 40% OOS trading. 5bps one-way transaction costs per leg.*
+Rendered from `results/summary.json`, `outputs/` and `data/` by `scripts/render_readme.py` after `python run_pipeline.py` and `python -m analysis.sensitivity`; CI checks that the block matches. The pair table lists every selected pair, unranked by any in-sample choice, not a top-5 pick.
 
-| Pair | Sector | Half-Life | IS Sharpe | OOS Sharpe | Max DD | Hit Rate |
-|------|--------|-----------|-----------|------------|--------|----------|
-| JNJ/TMO | Health Care | 26d | -0.16 | **1.01** | -8.8% | 32% |
-| PM/MO | Consumer Staples | 33d | -0.51 | **0.99** | -9.3% | 22% |
-| PG/COST | Consumer Staples | 24d | -0.68 | **0.90** | -3.3% | 32% |
-| MSFT/AMD | Info Technology | 28d | -0.53 | **0.86** | -40.3% | 27% |
-| JNJ/HUM | Health Care | 32d | -0.81 | **0.65** | -4.8% | 21% |
+<!-- results:start (generated by scripts/render_readme.py, do not edit by hand) -->
+Sample 2019-01-01 to 2024-01-01. Pairs screened on the first 60% of dates; out-of-sample trading 2021-12-29 to 2023-12-29 (504 days), 5 bps one-way cost per leg.
 
-*Warning: this table predates the selection fix and is optimistic twice over: pairs were screened on the full sample, and these are the five pairs with the highest OOS Sharpe, i.e. ranked on the test result. Treat it as a pipeline illustration, not evidence of an edge; a fair summary is the average OOS Sharpe across all selected pairs from a fresh run.*
+Screen: 9 of 142 industry pairs pass Engle-Granger at 5% with a half-life in range (1 also pass Johansen, 0 pass the rolling stability filter). About 7 false positives are expected by chance at that level. Benjamini-Hochberg q-values: 0 pairs below 0.10; the best pair (Cnstr/BldMt, p = 0.0015) has q = 0.21.
 
-*Note: Negative IS Sharpe is expected - the strategy trains only on cointegration structure, not signal profitability. The OOS forward-test is the true performance measure.*
+| Pair | Sector | Half-life | IS Sharpe | OOS Sharpe | Max DD | Hit rate | OOS trades |
+|---|---|---|---|---|---|---|---|
+| Mines/Boxes | Materials | 21d | 0.58 | 0.73 | -8.5% | 33% | 15 |
+| Ships/FabPr | Industrials | 28d | 0.31 | 0.02 | -7.1% | 67% | 6 |
+| Mach/Cnstr | Industrials | 20d | 0.30 | -0.01 | -4.0% | 29% | 7 |
+| Beer/Hshld | Consumer Staples | 15d | -0.64 | -0.05 | -2.0% | 50% | 4 |
+| Insur/Fin | Financials | 18d | -0.73 | -0.20 | -6.7% | 80% | 5 |
+| Softw/LabEq | Information Technology | 16d | -0.96 | -0.25 | -8.5% | 15% | 13 |
+| Cnstr/BldMt | Industrials | 13d | -1.02 | -0.55 | -6.0% | 36% | 14 |
+| Mach/ElcEq | Industrials | 37d | 0.11 | -0.65 | -6.1% | 11% | 9 |
+| PerSv/Meals | Consumer Discretionary | 19d | 0.76 | -0.84 | -4.1% | 11% | 9 |
+
+| Statistic | Value |
+|---|---|
+| Mean / median OOS Sharpe across pairs | -0.20 / -0.20 |
+| Pairs with positive OOS Sharpe | 22% |
+| Equal-weight portfolio of all pairs: Sharpe, annual return, max drawdown | -0.07, -0.13%, -1.36% |
+| Inverse-vol portfolio capped at 10% per pair: Sharpe, annual return, max drawdown | 0.02, 0.02%, -1.44% |
+| Sensitivity grid (12 settings of z-window and entry z): capped-portfolio Sharpe range | -1.01 to 0.37, positive in 6 |
+| Break-momentum study: OOS break events | 0 |
+<!-- results:end -->
+
+There is no edge here. The screen finds about as many pairs as chance would, the out-of-sample Sharpe ratios centre below zero, and the sensitivity grid splits evenly between positive and negative portfolio Sharpe ratios, with every value small, so no setting stands out as a real effect. Industry portfolios are diversified baskets, and their spreads mean revert less reliably than the single-stock pairs this pipeline was designed for. Half-life in the table is the OU estimate from the backtest; the screening file reports slightly different values from its own OLS spread.
 
 ---
 
@@ -124,7 +146,7 @@ Stop-loss: |z| > 3.0  →  immediate exit
 # Install dependencies
 pip install -r requirements.txt
 
-# Run the full pipeline (downloads data, screens pairs, backtests, saves outputs)
+# Run the full pipeline (downloads Ken French data, screens pairs, backtests, saves outputs)
 python run_pipeline.py --start 2019-01-01 --end 2024-01-01
 
 # Or run interactively
@@ -132,7 +154,10 @@ jupyter notebook notebooks/stat_arb_walkthrough.ipynb
 ```
 
 Outputs generated:
-- `data/cointegrated_pairs.csv` - screened pairs with test stats & half-life
+- `data/cointegrated_pairs_<start>_<end>_is60.csv` - screened pairs with test stats and half-life
+- `data/all_pair_tests.csv` - every pair tested, with Benjamini-Hochberg q-values
+- `results/summary.json`, `outputs/portfolio_summary.json` - all-pairs portfolio statistics
+- `outputs/sensitivity_grid.csv` - OOS results across z-window and entry settings
 - `outputs/pair_performance_summary.csv` - full performance table
 - `outputs/top5_pairs_equity_curves.png` - OOS equity curves
 - `outputs/kalman_vs_ols_beta.png` - Kalman vs rolling OLS comparison
@@ -141,7 +166,7 @@ Outputs generated:
 
 ## What this project implements
 
-- **Built end-to-end statistical arbitrage engine** in Python screening within-sector S&P 500 pairs using Engle-Granger and Johansen cointegration tests with rolling stability validation
+- **Built end-to-end statistical arbitrage engine** in Python screening within-sector pairs (Ken French 49 industry portfolios on open data) using Engle-Granger and Johansen cointegration tests with rolling stability validation
 - **Implemented closed-form OU MLE** to estimate mean-reversion speed κ, long-run mean θ, and volatility σ; filtered pairs to half-lives of 5–60 days for tradeable mean-reversion dynamics
 - **Developed Kalman filter state-space model** for adaptive hedge ratio estimation, compared against a 60-day rolling OLS hedge ratio; vectorized backtest reports Sharpe, Sortino, drawdown and hit rate per pair
 - **Engineered regime-detection risk layer** using rolling Engle-Granger re-tests that pauses pairs during cointegration breakdowns
@@ -153,10 +178,18 @@ Outputs generated:
 
 | Package | Purpose |
 |---------|---------|
-| `yfinance` | Market data download |
+| `universe/opendata.py` | Ken French Data Library download and cache |
 | `statsmodels` | Engle-Granger, Johansen, ADF tests |
 | `numpy / scipy` | Numerical computing, MLE |
 | `pandas` | Time series manipulation |
 | `matplotlib / seaborn` | Visualisation |
 | `pykalman` | Kalman filter reference (manual implementation used) |
 | `tqdm` | Progress bars |
+
+## Data snapshot
+
+`data/open_data_manifest.json` records every open data file behind the results above (SHA-256, rows, first and last date). Ken French and FRED occasionally revise history; after a fresh download, check whether the inputs still match with:
+
+```bash
+python -c "from universe.opendata import verify_manifest; print(verify_manifest('data/open_data_manifest.json'))"
+```

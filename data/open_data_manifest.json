@@ -1,0 +1,21 @@
+{
+  "generated_utc": "2026-11-14T18:02:24Z",
+  "sources": {
+    "fred": "https://fred.stlouisfed.org/graph/fredgraph.csv?id={sid}",
+    "french": "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/{name}_CSV.zip",
+    "github": {
+      "vix_daily": "https://raw.githubusercontent.com/datasets/finance-vix/main/data/vix-daily.csv",
+      "sp500_monthly_shiller": "https://raw.githubusercontent.com/datasets/s-and-p-500/main/data/data.csv",
+      "sp500_constituents": "https://raw.githubusercontent.com/datasets/s-and-p-500-companies/main/data/constituents.csv"
+    }
+  },
+  "files": {
+    "french_49_Industry_Portfolios_daily_0.csv": {
+      "sha256": "5b3950605bed4a8be3b238eb3b3042a55af4514d0e974ea9d4be92931eb0b789",
+      "bytes": 7406483,
+      "rows": 26338,
+      "first": "19260701",
+      "last": "20260930"
+    }
+  }
+}

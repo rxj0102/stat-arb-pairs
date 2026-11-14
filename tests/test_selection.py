@@ -56,3 +56,11 @@ def test_empty_download_raises(monkeypatch, tmp_path):
     monkeypatch.setattr(cs, "DATA_DIR", tmp_path)
     with pytest.raises(RuntimeError):
         cs.screen_pairs()
+
+
+def test_benjamini_hochberg_matches_reference():
+    import numpy as np
+    from universe.cointegration_screen import benjamini_hochberg
+    p = np.array([0.01, 0.04, 0.03, 0.20])
+    # sorted p: .01,.03,.04,.20 -> p*n/rank: .04,.06,.0533,.20 -> cummin from top: .04,.0533,.0533,.20
+    np.testing.assert_allclose(benjamini_hochberg(p), [0.04, 0.05333333, 0.05333333, 0.20])

@@ -64,7 +64,11 @@ def run_backtest(
     # Spread return: long β*S2 → hedge ratio positions
     # Position = +1: long S1, short β*S2
     # P&L per unit notional
-    spread_ret = r1 - beta * r2
+    # The hedge held over day t is the beta known at the close of t-1.
+    # beta[t] is updated with day t prices, so using it here would leak
+    # the same-day observation into the P&L.
+    beta_held = beta.shift(1).bfill()
+    spread_ret = r1 - beta_held * r2
 
     # Gross P&L
     gross_pnl = pos.shift(1).fillna(0) * spread_ret
