@@ -3,7 +3,7 @@
 [![CI](https://github.com/rxj0102/stat-arb-pairs/actions/workflows/ci.yml/badge.svg)](https://github.com/rxj0102/stat-arb-pairs/actions/workflows/ci.yml)
 ### Kalman Filter Hedge Ratio · OU Process · Regime Detection
 
-A pairs trading research system that screens the S&P 500 universe for cointegrated pairs, fits Ornstein-Uhlenbeck dynamics, and generates mean-reversion signals using a dynamic Kalman-filter hedge ratio - with full out-of-sample backtesting and regime-aware risk management.
+A pairs trading research system that screens Ken French industry portfolios (free open data) for cointegrated pairs, fits Ornstein-Uhlenbeck dynamics, and generates mean-reversion signals using a dynamic Kalman-filter hedge ratio - with full out-of-sample backtesting and regime-aware risk management.
 
 ---
 
@@ -34,15 +34,15 @@ stat-arb-pairs/
 
 ## Corrections
 
-- **Selection bias removed.** Cointegrated pairs were screened on the full sample, including the period later reported as out-of-sample. Pairs are now selected on the first 60% of dates only, the same split `run_pipeline.py` uses, so out-of-sample Sharpe ratios are genuinely out of sample. `data/cointegrated_pairs.csv` and `outputs/` predate this change; delete the CSV and rerun `python run_pipeline.py` to refresh them.
+- **Selection bias removed.** Cointegrated pairs were screened on the full sample, including the period later reported as out-of-sample. Pairs are now selected on the first 60% of dates only, the same split `run_pipeline.py` uses, so out-of-sample Sharpe ratios are genuinely out of sample. `data/cointegrated_pairs.csv` and `outputs/` have been regenerated with the fix on open data.
 - An empty price download now raises instead of silently writing an empty pair list.
 
 ## Methodology
 
 ### 1. Universe Construction
-- **Sectors**: Information Technology, Financials, Health Care, Consumer Staples, Energy (S&P 500 GICS groupings)
-- ~190 tickers across 5 sectors → ~855 within-sector pairs tested
-- Data: `yfinance` adjusted close prices, 5-year history (2019–2024)
+- **Universe**: Ken French 49 industry portfolios (value weighted, daily total returns), grouped into 8 broad sectors in `universe/sector_map.py` ('Other' left out). The earlier version used about 100 single S&P 500 stocks from Yahoo Finance; there is no free open source for daily single-stock prices, so industry portfolios are the closest open substitute.
+- 48 industries across 8 sectors, 142 within-sector pairs tested
+- Data: Ken French Data Library, 2019-01-02 to 2023-12-29 (1,258 days), loaded by `universe/opendata.py`
 
 ### 2. Cointegration Screening
 Two independent tests must pass:
@@ -100,21 +100,27 @@ Stop-loss: |z| > 3.0  →  immediate exit
 
 ---
 
-## Results - Top 5 Pairs (Out-of-Sample, 2019–2024)
+## Results (Out-of-Sample, open data)
 
-*60% in-sample fit / 40% OOS trading. 5bps one-way transaction costs per leg.*
+*Pairs screened on the first 60% of dates (2019-01-02 to 2021-12-28); traded out of sample from 2021-12-29 to 2023-12-29. 5bps one-way transaction costs per leg. Copied from `outputs/pair_performance_summary.csv` and `data/cointegrated_pairs.csv`.*
+
+Nine pairs passed the Engle-Granger screen (p < 0.05, half-life in range). Only one also passed Johansen, and none passed the rolling stability filter. With 142 pairs tested at 5%, about 7 false positives are expected by chance, so 9 hits is close to what noise alone would produce.
 
 | Pair | Sector | Half-Life | IS Sharpe | OOS Sharpe | Max DD | Hit Rate |
 |------|--------|-----------|-----------|------------|--------|----------|
-| JNJ/TMO | Health Care | 26d | -0.16 | **1.01** | -8.8% | 32% |
-| PM/MO | Consumer Staples | 33d | -0.51 | **0.99** | -9.3% | 22% |
-| PG/COST | Consumer Staples | 24d | -0.68 | **0.90** | -3.3% | 32% |
-| MSFT/AMD | Info Technology | 28d | -0.53 | **0.86** | -40.3% | 27% |
-| JNJ/HUM | Health Care | 32d | -0.81 | **0.65** | -4.8% | 21% |
+| Mines/Boxes | Materials | 21d | -0.70 | 0.95 | -9.9% | 33% |
+| Mach/Cnstr | Industrials | 20d | -0.86 | 0.48 | -8.1% | 41% |
+| Ships/FabPr | Industrials | 28d | 0.34 | 0.31 | -10.2% | 38% |
+| Beer/Hshld | Consumer Staples | 15d | -0.52 | -0.21 | -8.6% | 40% |
+| Mach/ElcEq | Industrials | 37d | 0.07 | -0.65 | -13.2% | 18% |
+| Softw/LabEq | Information Technology | 16d | -1.22 | -0.78 | -20.0% | 23% |
+| PerSv/Meals | Consumer Discretionary | 19d | -0.40 | -0.82 | -9.5% | 20% |
+| Insur/Fin | Financials | 18d | -1.30 | -1.21 | -20.5% | 28% |
+| Cnstr/BldMt | Industrials | 13d | -0.45 | -1.54 | -19.2% | 24% |
 
-*Warning: this table predates the selection fix and is optimistic twice over: pairs were screened on the full sample, and these are the five pairs with the highest OOS Sharpe, i.e. ranked on the test result. Treat it as a pipeline illustration, not evidence of an edge; a fair summary is the average OOS Sharpe across all selected pairs from a fresh run.*
+**Across all nine pairs: mean OOS Sharpe -0.39, median -0.65, 3 of 9 positive.** There is no edge here. Industry portfolios are diversified baskets, and their spreads mean revert less reliably than the single-stock pairs this pipeline was designed for. The table is a fair, unranked view of every selected pair, not a top-5 pick.
 
-*Note: Negative IS Sharpe is expected - the strategy trains only on cointegration structure, not signal profitability. The OOS forward-test is the true performance measure.*
+*Half-life is the OU estimate from the backtest; the screening file reports slightly different values from its own OLS spread.*
 
 ---
 
@@ -124,7 +130,7 @@ Stop-loss: |z| > 3.0  →  immediate exit
 # Install dependencies
 pip install -r requirements.txt
 
-# Run the full pipeline (downloads data, screens pairs, backtests, saves outputs)
+# Run the full pipeline (downloads Ken French data, screens pairs, backtests, saves outputs)
 python run_pipeline.py --start 2019-01-01 --end 2024-01-01
 
 # Or run interactively
@@ -141,7 +147,7 @@ Outputs generated:
 
 ## What this project implements
 
-- **Built end-to-end statistical arbitrage engine** in Python screening within-sector S&P 500 pairs using Engle-Granger and Johansen cointegration tests with rolling stability validation
+- **Built end-to-end statistical arbitrage engine** in Python screening within-sector pairs (Ken French 49 industry portfolios on open data) using Engle-Granger and Johansen cointegration tests with rolling stability validation
 - **Implemented closed-form OU MLE** to estimate mean-reversion speed κ, long-run mean θ, and volatility σ; filtered pairs to half-lives of 5–60 days for tradeable mean-reversion dynamics
 - **Developed Kalman filter state-space model** for adaptive hedge ratio estimation, compared against a 60-day rolling OLS hedge ratio; vectorized backtest reports Sharpe, Sortino, drawdown and hit rate per pair
 - **Engineered regime-detection risk layer** using rolling Engle-Granger re-tests that pauses pairs during cointegration breakdowns
@@ -153,7 +159,7 @@ Outputs generated:
 
 | Package | Purpose |
 |---------|---------|
-| `yfinance` | Market data download |
+| `universe/opendata.py` | Ken French Data Library download and cache |
 | `statsmodels` | Engle-Granger, Johansen, ADF tests |
 | `numpy / scipy` | Numerical computing, MLE |
 | `pandas` | Time series manipulation |

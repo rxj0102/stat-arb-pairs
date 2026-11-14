@@ -1,30 +1,18 @@
-"""Static GICS sector mapping for a representative S&P 500 universe."""
+"""Sector groups of Ken French 49 industry portfolios (open data universe).
 
-# ~20 liquid stocks per sector across 5 sectors
+The earlier version used ~100 individual S&P 500 stocks from Yahoo Finance.
+There is no free open source for daily single-stock prices, so the universe is
+now the Ken French 49 industry portfolios (value weighted, daily), grouped by
+broad sector. Pairs are screened within each group. 'Other' is left out.
+"""
+
 SECTOR_TICKERS = {
-    "Information Technology": [
-        "AAPL", "MSFT", "NVDA", "AVGO", "ORCL", "CSCO", "ADBE", "ACN",
-        "CRM", "AMD", "TXN", "QCOM", "INTC", "IBM", "NOW", "AMAT",
-        "MU", "ADI", "KLAC", "LRCX",
-    ],
-    "Financials": [
-        "JPM", "BAC", "WFC", "GS", "MS", "BLK", "C", "AXP",
-        "USB", "PNC", "TFC", "COF", "SCHW", "MET", "PRU", "AFL",
-        "ALL", "CB", "MMC", "AON",
-    ],
-    "Health Care": [
-        "JNJ", "UNH", "LLY", "ABBV", "MRK", "TMO", "ABT", "DHR",
-        "BMY", "AMGN", "PFE", "GILD", "ISRG", "SYK", "MDT", "CI",
-        "ELV", "HUM", "CVS", "VRTX",
-    ],
-    "Consumer Staples": [
-        "PG", "KO", "PEP", "COST", "WMT", "PM", "MO", "CL",
-        "MDLZ", "GIS", "K", "HSY", "CPB", "HRL", "SJM", "MKC",
-        "CAG", "CHD", "CLX", "KMB",
-    ],
-    "Energy": [
-        "XOM", "CVX", "COP", "EOG", "SLB", "MPC", "PSX", "VLO",
-        "PXD", "OXY", "HAL", "BKR", "DVN", "HES", "FANG", "APA",
-        "MRO", "NOV", "HP", "RRC",
-    ],
+    "Information Technology": ["Hardw", "Softw", "Chips", "LabEq", "BusSv", "Telcm"],
+    "Financials": ["Banks", "Insur", "RlEst", "Fin"],
+    "Health Care": ["Hlth", "MedEq", "Drugs"],
+    "Consumer Staples": ["Agric", "Food", "Soda", "Beer", "Smoke", "Hshld"],
+    "Energy and Utilities": ["Oil", "Coal", "Util"],
+    "Materials": ["Chems", "Steel", "Mines", "Gold", "Paper", "Boxes", "Rubbr", "Txtls"],
+    "Industrials": ["Mach", "ElcEq", "Aero", "Ships", "Guns", "Trans", "Cnstr", "BldMt", "FabPr"],
+    "Consumer Discretionary": ["Autos", "Clths", "Toys", "Fun", "Books", "PerSv", "Rtail", "Meals", "Whlsl"],
 }
