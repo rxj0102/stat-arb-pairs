@@ -25,6 +25,13 @@ DATA_DIR.mkdir(exist_ok=True)
 # Data download
 # ---------------------------------------------------------------------------
 
+def pairs_cache_path(start: str, end: str, train_frac: float | None) -> Path:
+    """Screen results are cached per sample and selection window, so a cache made
+    under other settings (for example the old full-sample screen) is never reused."""
+    tag = "full" if train_frac is None else f"is{int(round(train_frac * 100))}"
+    return DATA_DIR / f"cointegrated_pairs_{start}_{end}_{tag}.csv"
+
+
 def download_prices(tickers: list[str], start: str, end: str) -> pd.DataFrame:
     """Total return indices for Ken French 49 industry portfolios (open data).
 
@@ -221,7 +228,7 @@ def screen_pairs(
         columns=["sector", "ticker1", "ticker2", "eg_stat", "eg_pval", "johansen_pass",
                  "ols_beta", "half_life", "instability_rate", "stable", "eg_qval"],
     ).sort_values("eg_pval")
-    out_path = DATA_DIR / "cointegrated_pairs.csv"
+    out_path = pairs_cache_path(start, end, train_frac)
     df.to_csv(out_path, index=False)
     print(f"\nFound {len(df)} cointegrated pairs → {out_path}")
     return df

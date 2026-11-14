@@ -10,3 +10,4 @@ build/
 
 # open data cache
 data/open_cache/
+.venv/

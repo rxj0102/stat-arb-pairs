@@ -1,0 +1,25 @@
+{
+  "sample": {
+    "start": "2019-01-01",
+    "end": "2024-01-01",
+    "oos_start": "2021-12-29",
+    "oos_end": "2023-12-29",
+    "oos_days": 504
+  },
+  "n_pairs": 57,
+  "pair_oos_sharpe": {
+    "mean": -0.3689824561403508,
+    "median": -0.375,
+    "share_positive": 0.22807017543859648,
+    "min": -1.735,
+    "max": 1.131
+  },
+  "pair_is_sharpe_mean": -0.3241754385964912,
+  "equal_weight_portfolio": {
+    "sharpe": -1.4483939108022479,
+    "ann_return": -0.04720455391483046,
+    "ann_vol": 0.032590964075984295,
+    "max_drawdown": -0.10318801322832816
+  },
+  "half_life_median": 18.35
+}
