@@ -17,27 +17,54 @@ END = "<!-- results:end -->"
 
 
 def block() -> str:
+    import pandas as pd
+
     m = json.loads((ROOT / "results" / "summary.json").read_text())
+    cap = json.loads((ROOT / "outputs" / "portfolio_summary.json").read_text())
+    pairs = pd.read_csv(ROOT / "outputs" / "pair_performance_summary.csv")
+    screen = pd.read_csv(ROOT / "data" / f"cointegrated_pairs_{m['sample']['start']}_{m['sample']['end']}_is60.csv")
+    tests = pd.read_csv(ROOT / "data" / "all_pair_tests.csv")
+    grid = pd.read_csv(ROOT / "outputs" / "sensitivity_grid.csv")
+    bm = pd.read_csv(ROOT / "outputs" / "break_momentum_summary.csv")
     p, e, smp = m["pair_oos_sharpe"], m["equal_weight_portfolio"], m["sample"]
-    return "\n".join([
+    sector = {f"{r.ticker1}/{r.ticker2}": r.sector for r in screen.itertuples()}
+    n_tests = len(tests)
+    best = tests.sort_values("eg_pval").iloc[0]
+    lines = [
         START,
         f"Sample {smp['start']} to {smp['end']}. Pairs screened on the first 60% of dates; "
         f"out-of-sample trading {smp['oos_start']} to {smp['oos_end']} ({smp['oos_days']} days), "
-        "5 bps one-way cost per leg.",
+        f"{cap['cost_bps_one_way_per_leg']} bps one-way cost per leg.",
+        "",
+        f"Screen: {m['n_pairs']} of {n_tests} industry pairs pass Engle-Granger at 5% with a half-life in range "
+        f"({int(screen.johansen_pass.sum())} also pass Johansen, {int(screen.stable.sum())} pass the rolling stability filter). "
+        f"About {0.05 * n_tests:.0f} false positives are expected by chance at that level. "
+        f"Benjamini-Hochberg q-values: {int((tests.eg_qval < 0.10).sum())} pairs below 0.10; the best pair "
+        f"({best.ticker1}/{best.ticker2}, p = {best.eg_pval:.4f}) has q = {best.eg_qval:.2f}.",
+        "",
+        "| Pair | Sector | Half-life | IS Sharpe | OOS Sharpe | Max DD | Hit rate | OOS trades |",
+        "|---|---|---|---|---|---|---|---|",
+    ]
+    for r in pairs.sort_values("OOS_sharpe", ascending=False).itertuples():
+        lines.append(f"| {r.pair} | {sector.get(r.pair, '')} | {r.half_life:.0f}d | {r.IS_sharpe:.2f} | "
+                     f"{r.OOS_sharpe:.2f} | {r.max_dd:.1%} | {r.hit_rate:.0%} | {r.total_trades_oos} |")
+    full = grid
+    lines += [
         "",
         "| Statistic | Value |",
         "|---|---|",
-        f"| Pairs passing the in-sample screen | {m['n_pairs']} |",
-        f"| Median OU half-life | {m['half_life_median']:.1f} days |",
-        f"| Mean OOS Sharpe across pairs | {p['mean']:.2f} |",
-        f"| Median OOS Sharpe across pairs | {p['median']:.2f} |",
+        f"| Mean / median OOS Sharpe across pairs | {p['mean']:.2f} / {p['median']:.2f} |",
         f"| Pairs with positive OOS Sharpe | {p['share_positive']:.0%} |",
-        f"| Range of pair OOS Sharpe | {p['min']:.2f} to {p['max']:.2f} |",
-        f"| Equal-weight portfolio of all pairs: Sharpe | {e['sharpe']:.2f} |",
-        f"| Equal-weight portfolio: annual return / volatility | {e['ann_return']:.2%} / {e['ann_vol']:.2%} |",
-        f"| Equal-weight portfolio: max drawdown | {e['max_drawdown']:.2%} |",
+        f"| Equal-weight portfolio of all pairs: Sharpe, annual return, max drawdown | "
+        f"{e['sharpe']:.2f}, {e['ann_return']:.2%}, {e['max_drawdown']:.2%} |",
+        f"| Inverse-vol portfolio capped at {cap['max_weight_per_pair']:.0%} per pair: Sharpe, annual return, max drawdown | "
+        f"{cap['portfolio_oos_sharpe']:.2f}, {cap['portfolio_oos_ann_return']:.2%}, {cap['portfolio_oos_max_drawdown']:.2%} |",
+        f"| Sensitivity grid ({len(full)} settings of z-window and entry z): capped-portfolio Sharpe range | "
+        f"{full.portfolio_oos_sharpe.min():.2f} to {full.portfolio_oos_sharpe.max():.2f}, positive in {int((full.portfolio_oos_sharpe > 0).sum())} |",
+        f"| Break-momentum study: OOS break events | {int(bm.n_events.max()) if len(bm) else 0} |",
         END,
-    ])
+    ]
+    return "\n".join(lines)
 
 
 def main() -> int:
@@ -51,7 +78,7 @@ def main() -> int:
         if new != text:
             print("README Results block is stale: rerun run_pipeline.py and render", file=sys.stderr)
             return 1
-        print("README Results block matches results/summary.json")
+        print("README Results block matches results/ and outputs/")
         return 0
     README.write_text(new)
     return 0

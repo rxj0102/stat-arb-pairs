@@ -54,7 +54,8 @@ def main() -> None:
     from universe.cointegration_screen import download_prices
 
     out = Path("outputs")
-    pairs = pd.read_csv("data/cointegrated_pairs.csv")
+    from universe.cointegration_screen import pairs_cache_path
+    pairs = pd.read_csv(pairs_cache_path("2019-01-01", "2024-01-01", 0.60))
     tickers = sorted(set(pairs.ticker1) | set(pairs.ticker2))
     prices = download_prices(tickers, start="2019-01-01", end="2024-01-01")
     grid = run_grid(pairs, prices)
