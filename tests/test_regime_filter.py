@@ -1,0 +1,73 @@
+"""The cointegration regime overlay must hold a pause until the next passing test."""
+import numpy as np
+import pandas as pd
+
+from risk import regime_filter as rf
+
+
+def _series(n=200, seed=0):
+    rng = np.random.default_rng(seed)
+    idx = pd.bdate_range("2021-01-01", periods=n)
+    s1 = pd.Series(100 + np.cumsum(rng.normal(0, 1, n)), index=idx)
+    s2 = pd.Series(100 + np.cumsum(rng.normal(0, 1, n)), index=idx)
+    return s1, s2
+
+
+def test_pause_holds_between_checks(monkeypatch):
+    """Once a check fails, every day until the next passing check must be flat."""
+    s1, s2 = _series()
+    pos = pd.Series(1.0, index=s1.index)
+    # Fail every check from day 100 on; pass before that.
+    calls = {"i": 0}
+
+    def fake_coint(w1, w2):
+        end = s1.index.get_loc(w1.index[-1]) + 1
+        return 0.0, (0.5 if end >= 100 else 0.01), None
+
+    monkeypatch.setattr(rf, "coint", fake_coint)
+    out = rf.check_regime(s1, s2, pos, window=60, recheck_freq=5)
+    first_fail = next(i for i in range(60, 200) if i % 5 == 0 and i >= 100)
+    assert (out.iloc[first_fail:] == 0).all()
+    assert (out.iloc[:first_fail] == 1).all()
+
+
+def test_pause_lifts_after_passing_check(monkeypatch):
+    s1, s2 = _series()
+    pos = pd.Series(1.0, index=s1.index)
+
+    def fake_coint(w1, w2):
+        end = s1.index.get_loc(w1.index[-1]) + 1
+        return 0.0, (0.5 if 100 <= end < 150 else 0.01), None
+
+    monkeypatch.setattr(rf, "coint", fake_coint)
+    out = rf.check_regime(s1, s2, pos, window=60, recheck_freq=5)
+    assert (out.iloc[100:150] == 0).all()
+    assert (out.iloc[150:] == 1).all()
+
+
+def _pnls(n=300, k=4, seed=5):
+    rng = np.random.default_rng(seed)
+    idx = pd.bdate_range("2021-01-01", periods=n)
+    return {f"P{j}": pd.Series(rng.normal(0, 0.01 * (j + 1), n), index=idx) for j in range(k)}
+
+
+def test_position_cap_is_point_in_time():
+    pnls = _pnls()
+    base = rf.apply_position_cap(pnls)
+    future = {k: v.copy() for k, v in pnls.items()}
+    for v in future.values():
+        v.iloc[200:] *= 50  # change only the future
+    alt = rf.apply_position_cap(future)
+    for k in pnls:
+        pd.testing.assert_series_equal(base[k].iloc[:200], alt[k].iloc[:200])
+        # Day 200's weight uses data through day 199 only.
+        assert np.isclose(base[k].iloc[200] / pnls[k].iloc[200],
+                          alt[k].iloc[200] / future[k].iloc[200])
+
+
+def test_position_cap_binds():
+    pnls = _pnls(k=3)
+    scaled = rf.apply_position_cap(pnls, max_weight=0.10)
+    for k, v in pnls.items():
+        w = (scaled[k] / v).replace([np.inf, -np.inf], np.nan).dropna()
+        assert (w <= 0.10 + 1e-12).all()
