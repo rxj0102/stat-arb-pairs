@@ -1,7 +1,7 @@
-.PHONY: reproduce render check test
+.PHONY: reproduce render check test data
 
-reproduce:  ## run the pipeline from data/snapshot/ and refresh the README
-	uv run python run_pipeline.py
+reproduce:  ## run the study from data/snapshot/ and refresh the README
+	uv run python scripts/reproduce.py
 	uv run python scripts/render_readme.py
 
 render:
@@ -12,3 +12,6 @@ check:
 
 test:
 	uv run python -m pytest -q
+
+data:  ## download the industry returns again
+	uv run python -m universe.opendata
