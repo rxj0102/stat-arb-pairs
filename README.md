@@ -21,14 +21,14 @@ Daily returns 1965-07-01 to 2026-07-31 (61 years, 122 periods of 126 trading day
 |---|---|---|---|---|---|---|---|
 | Cointegration | +0.27% | +0.07 | +0.06% | +0.02 | +0.14 | -24% | 31% |
 | Distance | -0.06% | -0.03 | -0.26% | -0.12 | -0.90 | -22% | 28% |
-| All pairs | -0.54% | -0.20 | -0.70% | -0.26 | -2.08 | -40% | 19% |
+| All pairs | -0.54% | -0.20 | -0.70% | -0.26 | -2.09 | -40% | 19% |
 
 **Does selection help?** Difference in annual return, with its t-statistic
 
 | Comparison | Gross | Net |
 |---|---|---|
-| Cointegration minus all pairs | +0.81% (+2.22) | +0.76% (+2.08) |
-| Distance minus all pairs | +0.48% (+1.63) | +0.45% (+1.51) |
+| Cointegration minus all pairs | +0.81% (+2.22) | +0.76% (+2.09) |
+| Distance minus all pairs | +0.48% (+1.64) | +0.45% (+1.52) |
 | Cointegration minus distance | +0.33% (+0.80) | +0.32% (+0.77) |
 
 **Net Sharpe ratio by era**
@@ -57,7 +57,7 @@ Daily returns 1965-07-01 to 2026-07-31 (61 years, 122 periods of 126 trading day
 |---|---|
 | Universe | The 142 within-sector pairs of the Ken French 49 industry portfolios, daily, value-weighted. |
 | Formation | 24 months. Hedge ratio by OLS on log prices, Engle-Granger test with one lag, and the squared distance between the two price paths. |
-| Excluded | An industry with missing returns in a window sits that period out. A pair with a negative hedge ratio in formation is not traded. |
+| Excluded | An industry with missing returns in the formation window sits that period out. If a return goes missing during trading, the pair is closed at the last observed prices and stays flat for the rest of the period; the gap is not used to pick pairs. A pair with a negative hedge ratio in formation is not traded. |
 | Selection | The 10 pairs with the lowest Engle-Granger p-value; the 10 with the smallest distance; and all pairs as the benchmark. |
 | Trading | The next 6 months. The spread is measured in formation standard deviations. Open beyond 2, close when it crosses zero, close everything at the end of the period. |
 | Execution | A signal at the close is traded the next day. 5 bps per unit traded per leg. |

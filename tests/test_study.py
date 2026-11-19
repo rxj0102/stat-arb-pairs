@@ -158,6 +158,41 @@ def test_selection_ignores_the_trading_period(rets, res):
                            again["net"].iloc[k * CFG.trading:(k + 1) * CFG.trading])
 
 
+def test_a_gap_in_the_trading_period_does_not_change_selection(rets, res):
+    """A missing day that first appears in the trading window of period k is future
+    information. The pairs tested and chosen for k must be the same as without it."""
+    k = 2
+    s = CFG.formation + k * CFG.trading
+    holed = rets.copy()
+    holed.iloc[s + 40, 0] = np.nan
+    again = run(holed, CFG)
+    for key in ("n_tested", "n_usable"):
+        assert again["periods"][k][key] == res["periods"][k][key]
+    for name in ("Cointegration", "Distance", "All pairs"):
+        assert again["periods"][k][name]["pairs"] == res["periods"][k][name]["pairs"]
+    assert np.isfinite(again["net"].to_numpy()).all()
+
+
+def test_exit_on_missing_closes_at_last_observed_prices():
+    z = np.array([2.5, 2.4, 2.3, 2.2, 2.1, 2.0])
+    ry = np.array([0.01, 0.02, 0.03, np.nan, 0.05, 0.06])
+    rx = np.zeros(6)
+    z2, ry2, rx2 = study.exit_on_missing(z, ry, rx)
+    assert np.array_equal(z2, [2.5, 2.4, 0.0, 0.0, 0.0, 0.0])
+    assert np.array_equal(ry2, [0.01, 0.02, 0.03, 0.0, 0.0, 0.0])
+    assert np.isnan(ry[3])                       # inputs are not modified
+    out = trade_pair(z2, ry2, rx2, 1.0, CFG)
+    # Short opened at close 0, held on days 1 and 2, closed at close 2.
+    assert out["opened"] == 1 and out["converged"] == 1
+    assert np.allclose(out["gross"], [0, -0.01, -0.015, 0, 0, 0])
+
+
+def test_exit_on_missing_leaves_complete_data_alone():
+    z, ry, rx = np.ones(5), np.full(5, 0.01), np.full(5, 0.02)
+    z2, ry2, rx2 = study.exit_on_missing(z, ry, rx)
+    assert z2 is z and ry2 is ry and rx2 is rx
+
+
 def test_industry_with_missing_data_is_skipped(rets):
     holed = rets.copy()
     first = holed.columns[0]
