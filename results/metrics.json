@@ -11,16 +11,16 @@
     "n_pairs": 10,
     "entry": 2.0,
     "cost_bps": 5.0,
-    "pairs_tested_mean": 141.434
+    "pairs_tested_mean": 141.475
   },
   "screen": {
     "mean_pass_5pct": 10.418,
-    "expected_by_chance": 7.07172,
+    "expected_by_chance": 7.07377,
     "share_of_periods_above_chance": 0.606557
   },
   "persistence": {
     "selected_pass_rate": 0.0940678,
-    "all_pairs_pass_rate": 0.0748009,
+    "all_pairs_pass_rate": 0.0747919,
     "periods": 118
   },
   "portfolios": {
@@ -100,26 +100,26 @@
     },
     "All pairs": {
       "net": {
-        "ann_return": -0.00702016,
-        "ann_vol": 0.0267017,
-        "sharpe": -0.26291,
-        "t": -2.08373,
-        "max_drawdown": -0.395875
+        "ann_return": -0.00703087,
+        "ann_vol": 0.0267002,
+        "sharpe": -0.263327,
+        "t": -2.08725,
+        "max_drawdown": -0.396268
       },
       "gross": {
-        "ann_return": -0.00543568,
-        "ann_vol": 0.026699,
-        "sharpe": -0.203591,
-        "t": -1.61329,
-        "max_drawdown": -0.36138
+        "ann_return": -0.00544628,
+        "ann_vol": 0.0266975,
+        "sharpe": -0.204,
+        "t": -1.61671,
+        "max_drawdown": -0.361791
       },
-      "trades_opened": 12459,
-      "converged_share": 0.187415,
-      "trades_per_pair_period": 0.789894,
+      "trades_opened": 12464,
+      "converged_share": 0.187741,
+      "trades_per_pair_period": 0.789961,
       "eras": {
         "1965-1979": {
-          "net": -1.02156,
-          "gross": -0.942652
+          "net": -1.0243,
+          "gross": -0.945338
         },
         "1980-1999": {
           "net": -0.445247,
@@ -141,29 +141,29 @@
       "a": "Cointegration",
       "b": "All pairs",
       "returns": "gross",
-      "ann_diff": 0.00812223,
-      "t": 2.21866
+      "ann_diff": 0.00813283,
+      "t": 2.22169
     },
     {
       "a": "Cointegration",
       "b": "All pairs",
       "returns": "net",
-      "ann_diff": 0.00762638,
-      "t": 2.08456
+      "ann_diff": 0.00763709,
+      "t": 2.08762
     },
     {
       "a": "Distance",
       "b": "All pairs",
       "returns": "gross",
-      "ann_diff": 0.00482749,
-      "t": 1.63251
+      "ann_diff": 0.00483809,
+      "t": 1.63629
     },
     {
       "a": "Distance",
       "b": "All pairs",
       "returns": "net",
-      "ann_diff": 0.00446443,
-      "t": 1.51239
+      "ann_diff": 0.00447514,
+      "t": 1.51619
     },
     {
       "a": "Cointegration",
