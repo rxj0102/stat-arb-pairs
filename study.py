@@ -73,7 +73,10 @@ def exit_on_missing(z: np.ndarray, r_y: np.ndarray, r_x: np.ndarray):
 
     Sets z to 0 from the close before that day (z = 0 closes any open position and never
     opens one) and the returns from that day on to 0, so the position is closed at the
-    last observed prices and no later data is used. Arrays without gaps are returned as is.
+    last observed prices. Closing at the close before the gap assumes the gap is known one
+    day early; the alternative, holding through a day with no return, would need a price that
+    does not exist. In this data it happens once (Software, 1971-03-11). Arrays without gaps
+    are returned as is.
     """
     gap = np.isnan(r_y) | np.isnan(r_x)
     if not gap.any():

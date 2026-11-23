@@ -57,7 +57,7 @@ Daily returns 1965-07-01 to 2026-07-31 (61 years, 122 periods of 126 trading day
 |---|---|
 | Universe | The 142 within-sector pairs of the Ken French 49 industry portfolios, daily, value-weighted. |
 | Formation | 24 months. Hedge ratio by OLS on log prices, Engle-Granger test with one lag, and the squared distance between the two price paths. |
-| Excluded | An industry with missing returns in the formation window sits that period out. If a return goes missing during trading, the pair is closed at the last observed prices and stays flat for the rest of the period; the gap is not used to pick pairs. A pair with a negative hedge ratio in formation is not traded. |
+| Excluded | An industry with missing returns in the formation window sits that period out. If a return goes missing during trading, the pair is closed at the last observed prices (the close before the gap, which assumes the gap is known a day early; it happens once, Software on 1971-03-11) and stays flat for the rest of the period; the gap is not used to pick pairs. A pair with a negative hedge ratio in formation is not traded. |
 | Selection | The 10 pairs with the lowest Engle-Granger p-value; the 10 with the smallest distance; and all pairs as the benchmark. |
 | Trading | The next 6 months. The spread is measured in formation standard deviations. Open beyond 2, close when it crosses zero, close everything at the end of the period. |
 | Execution | A signal at the close is traded the next day. 5 bps per unit traded per leg. |
