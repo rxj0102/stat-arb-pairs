@@ -16,7 +16,8 @@ Rolling design in the spirit of Gatev, Goetzmann and Rouwenhorst (2006), fixed b
   return      per pair on gross exposure; a portfolio is the plain mean over its pairs, counting
               the idle ones (return on committed capital).
 
-Nothing in the trading period is used to pick pairs, hedge ratios or thresholds.
+Nothing in the trading period is used to pick pairs, hedge ratios or thresholds, including
+whether a return is missing: a gap during trading closes the pair at its last prices.
 """
 from __future__ import annotations
 
@@ -67,6 +68,27 @@ def formation_stats(y: np.ndarray, x: np.ndarray, lags: int) -> dict:
             "ssd": float(((y - x) ** 2).sum())}
 
 
+def exit_on_missing(z: np.ndarray, r_y: np.ndarray, r_x: np.ndarray):
+    """From the first day either leg has no return, the pair cannot be marked or traded.
+
+    Sets z to 0 from the close before that day (z = 0 closes any open position and never
+    opens one) and the returns from that day on to 0, so the position is closed at the
+    last observed prices. Closing at the close before the gap assumes the gap is known one
+    day early; the alternative, holding through a day with no return, would need a price that
+    does not exist. In this data it happens once (Software, 1971-03-11). Arrays without gaps
+    are returned as is.
+    """
+    gap = np.isnan(r_y) | np.isnan(r_x)
+    if not gap.any():
+        return z, r_y, r_x
+    first = int(np.argmax(gap))
+    z, r_y, r_x = z.copy(), r_y.copy(), r_x.copy()
+    z[max(first - 1, 0):] = 0.0
+    r_y[first:] = 0.0
+    r_x[first:] = 0.0
+    return z, r_y, r_x
+
+
 def trade_pair(z: np.ndarray, r_y: np.ndarray, r_x: np.ndarray, b: float, cfg: Config) -> dict:
     """Trade one pair through one period. z[t] is the spread at the close of day t.
 
@@ -103,18 +125,23 @@ def run(rets: pd.DataFrame, cfg: Config = Config(), progress: bool = False) -> d
         window = rets.iloc[f0:t1]
         rows = []
         for a_name, b_name in pairs:
-            if window[[a_name, b_name]].isna().any().any():
+            # Eligibility uses the formation window only. A gap that first appears in
+            # the trading period is handled when trading (forced exit), not by dropping
+            # the pair up front, which would use trading period information.
+            if window[[a_name, b_name]].iloc[: cfg.formation].isna().any().any():
                 continue
+            ra = window[a_name].to_numpy()[cfg.formation:]
+            rb = window[b_name].to_numpy()[cfg.formation:]
             y = (logp[a_name].iloc[f0:t1] - logp[a_name].iloc[f0]).to_numpy()
             x = (logp[b_name].iloc[f0:t1] - logp[b_name].iloc[f0]).to_numpy()
             st = formation_stats(y[: cfg.formation], x[: cfg.formation], cfg.eg_lags)
-            st.update({"pair": f"{a_name}/{b_name}", "y": y, "x": x, "ra": window[a_name].to_numpy()[cfg.formation:],
-                       "rb": window[b_name].to_numpy()[cfg.formation:]})
+            st.update({"pair": f"{a_name}/{b_name}", "y": y, "x": x, "ra": ra, "rb": rb})
             rows.append(st)
         usable = [r for r in rows if r["b"] > 0 and r["sd"] > 0]
         for r in usable:
             z = (r["y"][cfg.formation:] - r["a"] - r["b"] * r["x"][cfg.formation:]) / r["sd"]
-            r.update(trade_pair(z, r["ra"], r["rb"], r["b"], cfg))
+            z, ra, rb = exit_on_missing(z, r["ra"], r["rb"])
+            r.update(trade_pair(z, ra, rb, r["b"], cfg))
         chosen = {
             "Cointegration": sorted(usable, key=lambda r: r["p"])[: cfg.n_pairs],
             "Distance": sorted(usable, key=lambda r: r["ssd"])[: cfg.n_pairs],
